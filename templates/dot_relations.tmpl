@@ -1,0 +1,9 @@
+{{define "dot_relations"}}{{range $k, $t := .Tables}}{{range .Columns}}{{if ne .Relation.TableNameReal ""}}
+
+  edge [
+    arrowhead = "empty"
+    headlabel = "{{.Relation.CardinalitySource}}"
+    taillabel = "{{.Relation.CardinalityDestination}}"
+  ]
+  {{$t.TitleReal}} -> {{.Relation.TableNameReal}}
+{{end}}{{end}}{{end}}{{end}}

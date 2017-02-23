@@ -1,0 +1,18 @@
+# Title: ERサンプル
+users/会員
+    +id/会員ID [bigserial][NN][U]
+    nick_name/ニックネーム [varchar(128)][NN]
+    password/パスワード [varchar(128)]
+    profile/プロフィール [text]
+articles/記事 
+    +id/記事ID [bigserial][NN][U]
+    title/タイトル [varchar(256)][NN]
+    contents/内容 [text][NN]
+    owner_user_id/投稿者 [bigint][NN] 0..*--1 users
+tags/タグ 
+    +id/タグID [bigserial][NN][U]
+    name/タグ [varchar(256)][NN][U]
+article_tags/記事タグ管理
+    +id [bigserial][NN][U]
+    article_id [bigint][NN] 0..*--1 users
+    tag_id [bigint][NN] 0..*--1 tags

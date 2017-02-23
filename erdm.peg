@@ -1,0 +1,41 @@
+package main
+
+type Parser Peg {
+    ErdM
+}
+
+root <- expression
+
+expression <- title_info (table_info / comment / empty_line)*
+
+title_info <- '#' space* 'Title:' space* <title> {p.setTitle(text)} newline
+table_info <- table_name_info column_info* index_info*
+comment <- space* '//' comment_string newline
+empty_line <- whitespace
+
+table_name_info <- <real_table_name> {p.addTableTitleReal(text)} space* ('/' space* <table_name> {p.addTableTitle(text)}) space* newline*
+column_info <- column_attribute (space* relation ( space* relation)*)? (newline? column_comment)* newline?
+column_attribute <- space+ (<pkey> { p.addPrimaryKey(text) })? <real_column_name> { p.setColumnNameReal(text) } ( '/' <column_name> { p.setColumnName(text) }  )? space+ '[' <col_type> { p.addColumnType(text) } ']' ( ( '[' notnull { p.setNotNull() } ']' ) / ( '[' unique { p.setUnique() } ']' ) )* ( '[' '=' <default> { p.setColumnDefault(text) } ']' )? newline?
+relation <- <cardinality_left> { p.setRelationSource(text) } space* '--' space* <cardinality_right> { p.setRelationDestination(text) }  space+ <relation_point> { p.setRelationTableNameReal(text) }
+column_comment <- space+ '#' space? <comment_string> { p.addComment(text) }
+
+index_info <- space+ "index" space+ <real_column_name> {p.setIndexName(text)} space+ "(" space* <real_column_name> {p.setIndexColumn(text)} (space* "," space*  <real_column_name> {p.setIndexColumn(text)} space* )* space* ")" (space+ 'unique' { p.setUniqueIndex() })? space* newline*
+
+title <- (![\r\n] .)+
+comment_string <- [^\r\n]*
+whitespace <- [ \t\r\n]+
+newline <- [\r\n]+
+space <- [ \t]+
+notnull <- 'NN'
+unique <- 'U'
+real_table_name <- ([a-z] / [A-Z] / [0-9] / '_')+
+table_name <- (!whitespace .)*
+real_column_name <- ([a-z] / [A-Z] / [0-9] / '_')+
+column_name <- [^ \t\r\n]+
+relation_point <- [a-zA-Z0-9_.]+
+pkey <- '+' / '*'
+col_type <- ([a-zA-Z0-9_() .,])+
+default <- ((![\r\n\]] .) / '\\]')*
+cardinality_right <- cardinality
+cardinality_left <- cardinality
+cardinality <- [01*](..[01*])?

@@ -1,0 +1,107 @@
+# Title: Shopping Site
+
+users/顧客
+    +id/顧客ID [bigserial][NN][U]
+    name/名称 [varchar(128)][NN][='']
+    password/パスワード [varchar(128)][='********']
+        # sha1 でハッシュ化して登録
+    mail_address/メールアドレス [varchar(256)][NN][U]
+    updated/更新日時 [timestamp with time zone][NN][=now()]
+    created/作成日時 [timestamp with time zone][NN][=now()]
+    index i_users_mail_address (mail_address)
+
+prefectures/都道府県
+    +id/都道府県ID [int][NN][U]
+    name/都道府県名称 [varchar(4)][NN][U]
+    sort_order/ソート順 [int][NN][U]
+
+address_types/住所種別
+    +id/住所種別ID [int][NN][U]
+    name/種別名称 [varchar(10)][NN][U]
+
+
+addresses/住所
+    +id/住所ID [bigserial][NN][U]
+    user_id/顧客ID [bigint][NN] 0..*--1 users
+    name/名称 [varchar(128)][NN]
+    address_type_id/住所種別ID [bigint] 0..*--1 address_types
+    post_code/郵便番号 [varchar(7)][NN]
+    prefecture_id/都道府県コード [bigint][NN] 0..*--1 prefectures
+    address1/住所1 [varchar(128)][NN]
+    address2/住所2 [varchar(128)]
+    updated/更新日時 [timestamp with time zone][NN][=now()]
+    created/作成日時 [timestamp with time zone][NN][=now()]
+    index i_addresses_user_id (user_id)
+    index i_addresses_address_type_id (address_type_id)
+    index i_addresses_prefecture_id (prefecture_id)
+
+items/商品
+    +id/商品ID [bigserial][NN][U]
+    name/商品名 [varchar(128)][NN]
+    description/詳細 [text]
+    quantity/数量 [int][NN]
+    price/単価 [numeric(10,2)][NN]
+    updated/更新日時 [timestamp with time zone][NN][=now()]
+    created/作成日時 [timestamp with time zone][NN][=now()]
+
+carts/カート
+    +id/カートID [bigserial][NN][U]
+    user_id/顧客ID [bigint][NN] 0..*--1 users
+    updated/更新日時 [timestamp with time zone][NN][=now()]
+    created/作成日時 [timestamp with time zone][NN][=now()]
+    index i_carts_user_id (user_id)
+
+cart_items/カート内アイテム
+    +id/カート内アイテムID [bigserial][NN][U]
+    cart_id/カートID [bigint][NN] 0..*--1 carts
+    item_id/商品ID [bigint][NN] 0..*--1 items
+    category_id/分類ID [bigint][NN][U] 0..*--1 categories
+    quantity/数量 [int][NN]
+    updated/更新日時 [timestamp with time zone][NN][=now()]
+    created/作成日時 [timestamp with time zone][NN][=now()]
+    index i_cart_items_cart_id (cart_id)
+
+orders/注文
+    +id/注文ID [bigserial][NN][U]
+    cart_id/カートID [bigint][NN] 0..*--1 carts
+    order_status/注文状態 [int][NN][=0]
+    order_time/発注日時 [timestamp with time zone][NN][=now()]
+    shipment_time/出荷日時 [timestamp with time zone][NN][=now()]
+    shipment_user_id/出荷担当者 [bigint] 0..*--1 administrators
+    track_no/送り状番号 [varchar(64)]
+    user_id/顧客ID [bigint][NN] 0..*--1 users
+    item_id/商品ID [bigint][NN] 0..*--1 items
+    category_id/分類ID [bigint][NN][U] 0..*--1 categorie
+    order_address_id/発注者住所 [bigint][NN] 0..*--1 addresses
+    delivery_address_id/納品先住所 [bigint][NN] 0..*--1 addresses
+    charge_address_id/請求先住所 [bigint][NN] 0..*--1 addresses
+    updated/更新日時 [timestamp with time zone][NN][=now()]
+    created/作成日時 [timestamp with time zone][NN][=now()]
+    index i_orders_cart_id (cart_id)
+    index i_orders_user_id (user_id)
+    index i_orders_item_id (item_id)
+    index i_orders_cart_id_item_id (cart_id, item_id) unique
+
+categories/分類
+    +id/分類ID [bigserial][NN][U]
+    name/タグ [varchar(128)][NN]
+    description/説明 [text]
+    parent_category_id/親分類ID [bigint] 0..*--0..1 categories
+    updated/更新日時 [timestamp with time zone][NN][=now()]
+    created/作成日時 [timestamp with time zone][NN][=now()]
+    
+item_categories/商品分類
+    +id/商品分類ID [bigserial][NN][U]
+    item_id/商品ID [bigint][NN] 0..*--1 items
+    category_id/分類ID [bigint][NN][U] 0..*--1 categories
+    
+
+administrators/管理者
+    +id/管理者ID [bigserial][NN][U]
+    name/管理者名称 [varchar(64)][NN][U]
+    login_name/ログイン名 [varchar(64)][NN][U]
+    mail_address/メールアドレス [varchar(256)][NN][U]
+    password/パスワード [varchar(128)][='********']
+      # sha1 でハッシュ化して登録
+    updated/更新日時 [timestamp with time zone][NN][=now()]
+    created/作成日時 [timestamp with time zone][NN][=now()]
