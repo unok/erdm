@@ -28,7 +28,7 @@
                     <div class="col-md-10">
                         <h2>ERD</h2>
                         <img src="{{.ImageFilename}}" width="1000px"/>
-                        <h2>テーブル一覧</h2>
+                        <h2>Table List</h2>
                         <div class="table-responsive">
                             <table ng-repeat="table in tableList | filter:keyword" class="table table-bordered">
                                 <tbody>
@@ -37,8 +37,8 @@
                                             <table class="table table-striped table-bordered">
                                                 <tbody>
                                                     <tr class="success">
-                                                        <th>テーブル(論理名)</th>
-                                                        <th>テーブル(物理名)</th>
+                                                        <th>Table Name(Logical Name)</th>
+                                                        <th>Table Name(Physical Name)</th>
                                                     </tr>
                                                     <tr>
                                                         <td>{{"{{table.logical_name}}"}}</td>
@@ -49,23 +49,23 @@
                                             <table class="table table-striped table-bordered">
                                                 <tbody>
                                                     <tr class="info">
-                                                        <th>カラム名(論理名)</th>
-                                                        <th>カラム名(物理名)</th>
-                                                        <th>型</th>
+                                                        <th>Column Name(Logical Name)</th>
+                                                        <th>Column Name(Physical)</th>
+                                                        <th>Type</th>
                                                         <th>PK</th>
                                                         <th>NOT NULL</th>
                                                         <th>UNIQUE</th>
                                                         <th>FK</th>
-                                                        <th>デフォルト値</th>
-                                                        <th>コメント</th>
+                                                        <th>Default</th>
+                                                        <th>Comment</th>
                                                     </tr>
                                                     <tr ng-repeat="column in table.column_list">
                                                         <td style="white-space: nowrap;">{{"{{column.logical_name}}"}}</td>
                                                         <td style="white-space: nowrap;">{{"{{column.name}}"}}</td>
                                                         <td style="white-space: nowrap;">{{"{{column.type}}"}}</td>
-                                                        <td style="text-align: center;">{{"{{column.is_pkey ? '○' : ''}}"}}</td>
-                                                        <td style="text-align: center;">{{"{{column.is_not_null ? '○' : ''}}"}}</td>
-                                                        <td style="text-align: center;">{{"{{column.is_unique ? '○' : ''}}"}}</td>
+                                                        <td style="text-align: center;">{{"{{column.is_pkey ? '&#9745;' : ''}}"}}</td>
+                                                        <td style="text-align: center;">{{"{{column.is_not_null ? '&#9745;' : ''}}"}}</td>
+                                                        <td style="text-align: center;">{{"{{column.is_unique ? '&#9745;' : ''}}"}}</td>
                                                         <td style="white-space: nowrap;"><span ng-if="column.relation_table">-&gt;<a href="#table-{{"{{column.relation_table}}"}}">{{"{{column.relation_table}}"}}</a></span></td>
                                                         <td style="white-space: nowrap;">{{"{{column.default}}"}}</td>
                                                         <td style="white-space: nowrap;"><span ng-repeat="comment in column.comment_list">{{"{{comment}}"}}<br/></span></td>
@@ -75,15 +75,15 @@
                                             <table class="table table-striped table-bordered">
                                                 <tbody>
                                                     <tr class="info">
-                                                        <th>インデックス名</th>
-                                                        <th>カラムリスト</th>
-                                                        <th>UNIQUE</th>
-                                                        <th>コメント</th>
+                                                        <th>Index Name</th>
+                                                        <th>Column List</th>
+                                                        <th>Unique</th>
+                                                        <th>Comment</th>
                                                     </tr>
                                                     <tr ng-repeat="index in table.index_list">
                                                         <td style="white-space: nowrap;">{{"{{index.title}}"}}</td>
                                                         <td style="white-space: nowrap;">{{"{{index.columns}}"}}</td>
-                                                        <td style="text-align: center;">{{"{{index.is_unique ? '○' : ''}}"}}</td>
+                                                        <td style="text-align: center;">{{"{{index.is_unique ? '&#9745;' : ''}}"}}</td>
                                                         <td style="white-space: nowrap;"><span ng-repeat="comment in index.comment_list">{{"{{comment}}"}}<br/></span></td>
                                                     </tr>
                                                 </tbody>
