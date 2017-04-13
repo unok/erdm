@@ -55,6 +55,7 @@ type ErdM struct {
 	Tables         []Table
 	CurrentTableId int
 	ImageFilename  string
+	IsError        bool
 }
 
 func openFile(filename string) *os.File {
@@ -213,6 +214,35 @@ func (i *Index) GetIndexColumns() string {
 	return strings.Join(i.Columns, ", ");
 }
 
+func (c *ErdM) Err(pos int, buffer string) {
+	fmt.Println("")
+	a := strings.Split(buffer[:pos], "\n")
+	row := len(a) - 1
+	column := len(a[row]) - 1
+
+	lines := strings.Split(buffer, "\n")
+	for i := row - 5; i <= row; i++ {
+		if i < 0 {
+			i = 0
+		}
+
+		fmt.Println(lines[i])
+	}
+
+	s := ""
+	for i := 0; i <= column; i++ {
+		s += " "
+	}
+	ln := len(strings.Trim(lines[row], " \r\n"))
+	for i := column + 1; i < ln; i++ {
+		s += "~"
+	}
+	fmt.Println(s)
+
+	fmt.Println("error")
+	c.IsError = true
+}
+
 func main() {
 	// check dot command
 	dot_err := exec.Command("dot", "-?").Run()
@@ -222,28 +252,38 @@ func main() {
 		return
 	}
 
+	usage := "Usage: erdm [-output_dir directory_name] erd.erdm"
+
 	// check arguments
 	wd, _ := os.Getwd()
 	output_dir := flag.String("output_dir", wd, "output directory")
 	flag.Parse()
+	if len(flag.Args()) == 0 {
+		fmt.Println(usage)
+		return
+	}
 	input_file := flag.Args()[0]
 	stat, err := os.Stat(input_file)
 	if err != nil {
 		fmt.Println(err)
+		fmt.Println(usage)
 		return
 	}
 	if stat.IsDir() == true {
 		fmt.Println("Please set inputfile: " + input_file)
+		fmt.Println(usage)
 		return
 	}
 
 	stat, err = os.Stat(*output_dir)
 	if err != nil {
 		fmt.Println(err)
+		fmt.Println(usage)
 		return
 	}
 	if stat.IsDir() != true {
 		fmt.Println("Please set output_dir: " + *output_dir)
+		fmt.Println(usage)
 		return
 	}
 

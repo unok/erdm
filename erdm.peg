@@ -4,7 +4,10 @@ type Parser Peg {
     ErdM
 }
 
-root <- expression
+root <- expression EOT /
+    expression <.+> {p.Err(begin, buffer)} EOT /
+    <.+> {p.Err(begin, buffer)} EOT
+EOT <- !.
 
 expression <- title_info (table_info / comment / empty_line)*
 
@@ -16,7 +19,7 @@ empty_line <- whitespace
 table_name_info <- <real_table_name> {p.addTableTitleReal(text)} space* ('/' space* <table_name> {p.addTableTitle(text)}) space* newline*
 column_info <- column_attribute (space* relation ( space* relation)*)? (newline? column_comment)* newline?
 column_attribute <- space+ (<pkey> { p.addPrimaryKey(text) })? <real_column_name> { p.setColumnNameReal(text) } ( '/' <column_name> { p.setColumnName(text) }  )? space+ '[' <col_type> { p.addColumnType(text) } ']' ( ( '[' notnull { p.setNotNull() } ']' ) / ( '[' unique { p.setUnique() } ']' ) )* ( '[' '=' <default> { p.setColumnDefault(text) } ']' )? newline?
-relation <- <cardinality_left> { p.setRelationSource(text) } space* '--' space* <cardinality_right> { p.setRelationDestination(text) }  space+ <relation_point> { p.setRelationTableNameReal(text) }
+relation <- (<cardinality_left> { p.setRelationSource(text) })? space* '--' space* (<cardinality_right> { p.setRelationDestination(text) } space)? space*  <relation_point> { p.setRelationTableNameReal(text) }
 column_comment <- space+ '#' space? <comment_string> { p.addComment(text) }
 
 index_info <- space+ "index" space+ <real_column_name> {p.setIndexName(text)} space+ "(" space* <real_column_name> {p.setIndexColumn(text)} (space* "," space*  <real_column_name> {p.setIndexColumn(text)} space* )* space* ")" (space+ 'unique' { p.setUniqueIndex() })? space* newline*

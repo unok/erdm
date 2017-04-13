@@ -1,7 +1,7 @@
 {{define "dot_relations"}}{{range $k, $t := .Tables}}{{range .Columns}}{{if ne .Relation.TableNameReal ""}}
 
   edge [
-    arrowhead = "empty"
+    arrowhead = "none"
     headlabel = "{{.Relation.CardinalitySource}}"
     taillabel = "{{.Relation.CardinalityDestination}}"
   ]

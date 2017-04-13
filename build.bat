@@ -1,0 +1,3 @@
+peg erdm.peg
+go-bindata -o=templates_files.go ./templates/...
+go build
