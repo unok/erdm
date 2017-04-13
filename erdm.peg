@@ -25,16 +25,16 @@ column_comment <- space+ '#' space? <comment_string> { p.addComment(text) }
 index_info <- space+ "index" space+ <real_column_name> {p.setIndexName(text)} space+ "(" space* <real_column_name> {p.setIndexColumn(text)} (space* "," space*  <real_column_name> {p.setIndexColumn(text)} space* )* space* ")" (space+ 'unique' { p.setUniqueIndex() })? space* newline*
 
 title <- (![\r\n] .)+
-comment_string <- [^\r\n]*
+comment_string <- (![\r\n] .)*
 whitespace <- [ \t\r\n]+
 newline <- [\r\n]+
 space <- [ \t]+
 notnull <- 'NN'
 unique <- 'U'
 real_table_name <- ([a-z] / [A-Z] / [0-9] / '_')+
-table_name <- (!whitespace .)*
+table_name <- ( ('"' (![\t\r\n"] .)+ '"') / (![\t\r\n/ ] .)+ )
 real_column_name <- ([a-z] / [A-Z] / [0-9] / '_')+
-column_name <- [^ \t\r\n]+
+column_name <- ( ('"' (![\t\r\n"] .)+ '"') / (![\t\r\n/ ] .)+ )
 relation_point <- [a-zA-Z0-9_.]+
 pkey <- '+' / '*'
 col_type <- ([a-zA-Z0-9_() .,])+

@@ -2,11 +2,11 @@
 {{range $tk, $t := .Tables}}
   {{.TitleReal}} [label = <<table border="0" cellborder="0" cellpadding="0">
     <tr><td colspan="2"><font face="Ricty-Bold">
-    {{- .Title}}/{{.TitleReal -}}
+    {{- if ne .Title ""}}{{.Title}}/{{end}}{{.TitleReal -}}
     </font></td></tr>
     {{- range $k, $c := .Columns}}
     <tr><td align="left">
-    {{- .Title}}/{{.TitleReal}}  {{.Type}} {{if (or (not .AllowNull) .IsUnique) -}}
+    {{- if ne .Title ""}}{{- .Title}}/{{end}}{{.TitleReal}}  {{.Type}} {{if (or (not .AllowNull) .IsUnique) -}}
     (UNN)
     {{- else if not .AllowNull -}}
     (NN)

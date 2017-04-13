@@ -84,6 +84,7 @@ func (e *ErdM) addTableTitleReal(t string) {
 }
 
 func (e *ErdM) addTableTitle(t string) {
+	t = strings.Trim(t, "\"")
 	e.Tables[e.CurrentTableId].Title = t
 }
 
@@ -106,6 +107,7 @@ func (e *ErdM) setColumnNameReal(t string) {
 }
 
 func (e *ErdM) setColumnName(t string) {
+	t = strings.Trim(t, "\"")
 	e.Tables[e.CurrentTableId].Columns[e.Tables[e.CurrentTableId].CurrentColumnId].Title = t
 }
 
