@@ -1,0 +1,15 @@
+{{define "sqlite3_ddl" -}}
+{{range $ti, $t := .Tables -}}
+DROP TABLE IF EXISTS {{$t.TitleReal}};
+{{end}}
+{{range $ti, $t := .Tables}}
+CREATE TABLE {{$t.TitleReal}} (
+{{range $ci, $c := .Columns}}    {{$c.TitleReal}} {{$c.Type}}{{if $c.IsUnique}} UNIQUE{{end}}{{if not $c.AllowNull}} NOT NULL{{end}}{{if $c.HasDefaultSetting}} DEFAULT {{$c.Default}}{{end}},
+{{end}}
+    PRIMARY KEY ({{$t.GetPrimaryKeyColumns}})
+);
+{{range $ii, $idx := $t.Indexes -}}
+CREATE{{if $idx.IsUnique}} UNIQUE{{end}} INDEX {{$idx.Title}} ON {{$t.TitleReal}} ({{$idx.GetIndexColumns}});
+{{end -}}
+{{end}}
+{{end}}
