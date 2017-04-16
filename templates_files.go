@@ -5,6 +5,7 @@
 // templates/dot_tables.tmpl
 // templates/html.tmpl
 // templates/pg_ddl.tmpl
+// templates/sqlite3_ddl.tmpl
 // DO NOT EDIT!
 
 package main
@@ -107,7 +108,7 @@ func templatesDot_relationsTmpl() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "templates/dot_relations.tmpl", size: 336, mode: os.FileMode(438), modTime: time.Unix(1492065615, 0)}
+	info := bindataFileInfo{name: "templates/dot_relations.tmpl", size: 336, mode: os.FileMode(438), modTime: time.Unix(1492074617, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -127,7 +128,7 @@ func templatesDot_tablesTmpl() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "templates/dot_tables.tmpl", size: 762, mode: os.FileMode(438), modTime: time.Unix(1492066554, 0)}
+	info := bindataFileInfo{name: "templates/dot_tables.tmpl", size: 762, mode: os.FileMode(438), modTime: time.Unix(1492074617, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -147,7 +148,7 @@ func templatesHtmlTmpl() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "templates/html.tmpl", size: 8868, mode: os.FileMode(438), modTime: time.Unix(1492066554, 0)}
+	info := bindataFileInfo{name: "templates/html.tmpl", size: 8868, mode: os.FileMode(438), modTime: time.Unix(1492074617, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -168,6 +169,26 @@ func templatesPg_ddlTmpl() (*asset, error) {
 	}
 
 	info := bindataFileInfo{name: "templates/pg_ddl.tmpl", size: 602, mode: os.FileMode(438), modTime: time.Unix(1487831781, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _templatesSqlite3_ddlTmpl = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\x7c\x52\xc1\x6e\xe2\x30\x10\xbd\x23\xf1\x0f\x23\x94\x03\x48\x6c\x2e\x7b\x5b\xb4\x87\x2c\x31\x6c\x44\x1a\x68\x48\x24\x38\x55\x69\x3c\x20\x4b\xc6\x14\xe2\xa8\x20\x6b\xfe\xbd\xb2\x13\x68\x5a\xb5\xbd\x45\x99\xf7\xde\xbc\xf7\xc6\xc6\x70\xdc\x09\x85\x30\xa8\x4e\x52\x68\xfc\xfd\xc4\xb9\x1c\xc0\x2f\xa2\x7e\xcf\x98\x73\xa1\xf6\x08\x9e\x16\x63\xf0\x34\xfc\xf9\x0b\x7e\x56\x3c\x4b\xac\x9a\x79\x98\x2e\x57\x90\x05\xff\x62\x06\xd1\x0c\xd8\x26\x5a\x67\x6b\x30\xc6\xd3\x7e\x26\xb4\xc4\x14\x0b\x49\x34\xb1\x3a\xa8\xf8\xcf\x82\x76\x3a\x4d\x59\x90\xb1\x56\xf0\xb3\x0c\x0c\x3b\xf4\xd2\xd2\x4b\x47\x9f\x1e\x65\x7d\x50\x15\x11\x00\x58\x52\xf9\x81\xd4\xfc\xb8\xbe\x20\x91\x31\x62\x07\x5e\xe9\x47\x55\xae\xc4\xa9\x46\x22\xc8\x93\xe8\x31\x67\xad\x3b\x37\x57\x47\x6d\x31\x81\x94\xc7\xd7\xa4\x96\x56\x22\x59\x66\x90\xe4\x71\xdc\x85\x79\xa5\xff\xbf\xa8\x42\xdc\x15\xb5\xd4\x6b\xd4\x5a\xa8\x3d\x11\x84\x6c\x16\xe4\x71\xd6\x6c\x6d\xa7\x96\xe1\x88\xe3\x4e\x0f\xd6\xeb\x2a\x8d\x1e\x82\x74\x0b\x0b\xb6\x85\xa1\x4b\x3b\x47\xbd\x3a\x8b\x43\x71\xbe\x2e\xf0\x7a\xcf\x35\xea\xf7\x46\x93\x4e\x76\x61\xb3\x0b\x7e\xb1\xe9\x3d\xed\x47\x8a\xe3\xe5\x76\x90\xa6\xc1\xc6\xa2\xe0\x97\x6f\xb3\x42\x94\x84\x6c\x63\x7d\x5a\x94\x2b\x8c\x08\x96\xc9\x17\xad\xb7\x98\x39\x6a\xb7\xe9\xdd\xd6\xed\xae\xb7\xa7\x72\x3f\xb1\xfb\x78\x0b\x00\x00\xff\xff\x8b\x84\x90\x79\x57\x02\x00\x00")
+
+func templatesSqlite3_ddlTmplBytes() ([]byte, error) {
+	return bindataRead(
+		_templatesSqlite3_ddlTmpl,
+		"templates/sqlite3_ddl.tmpl",
+	)
+}
+
+func templatesSqlite3_ddlTmpl() (*asset, error) {
+	bytes, err := templatesSqlite3_ddlTmplBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "templates/sqlite3_ddl.tmpl", size: 599, mode: os.FileMode(438), modTime: time.Unix(1492307806, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -229,6 +250,7 @@ var _bindata = map[string]func() (*asset, error){
 	"templates/dot_tables.tmpl": templatesDot_tablesTmpl,
 	"templates/html.tmpl": templatesHtmlTmpl,
 	"templates/pg_ddl.tmpl": templatesPg_ddlTmpl,
+	"templates/sqlite3_ddl.tmpl": templatesSqlite3_ddlTmpl,
 }
 
 // AssetDir returns the file names below a certain
@@ -277,6 +299,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 		"dot_tables.tmpl": &bintree{templatesDot_tablesTmpl, map[string]*bintree{}},
 		"html.tmpl": &bintree{templatesHtmlTmpl, map[string]*bintree{}},
 		"pg_ddl.tmpl": &bintree{templatesPg_ddlTmpl, map[string]*bintree{}},
+		"sqlite3_ddl.tmpl": &bintree{templatesSqlite3_ddlTmpl, map[string]*bintree{}},
 	}},
 }}
 

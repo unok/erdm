@@ -328,7 +328,12 @@ func main() {
 		fmt.Println(err)
 		return
 	}
-	t, err := template.New("template").Parse(string(dot_string) + string(dot_tables_string) + string(dot_relations_string) + string(html_string) + string(pg_ddl_string))
+	sqlite3_ddl_string, err := Asset("templates/sqlite3_ddl.tmpl")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	t, err := template.New("template").Parse(string(dot_string) + string(dot_tables_string) + string(dot_relations_string) + string(html_string) + string(pg_ddl_string) + string(sqlite3_ddl_string))
 	// "templates/dot.tmpl", "templates/dot_tables.tmpl", "templates/dot_relations.tmpl", "templates/html.tmpl", "templates/pg_ddl.tmpl")
 	if err != nil {
 		fmt.Println(err)
@@ -394,6 +399,25 @@ func main() {
 		return
 	}
 	err = t.ExecuteTemplate(fp, "pg_ddl", parser.ErdM)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	sqlite3_filename := path.Join(*output_dir, basename + ".sqlite3.sql")
+	_, err = os.Stat(sqlite3_filename)
+	if err == nil {
+		if err = os.Remove(sqlite3_filename); err != nil {
+			fmt.Println(err)
+			return
+		}
+	}
+	fp, err = os.OpenFile(sqlite3_filename, os.O_CREATE, 0644)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	err = t.ExecuteTemplate(fp, "sqlite3_ddl", parser.ErdM)
 	if err != nil {
 		fmt.Println(err)
 		return
