@@ -348,7 +348,7 @@ func main() {
 			return
 		}
 	}
-	fp, err = os.OpenFile(dot_filename, os.O_CREATE, 0644)
+	fp, err = os.OpenFile(dot_filename, os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -374,7 +374,7 @@ func main() {
 			return
 		}
 	}
-	fp, err = os.OpenFile(html_filename, os.O_CREATE, 0644)
+	fp, err = os.OpenFile(html_filename, os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -393,7 +393,7 @@ func main() {
 			return
 		}
 	}
-	fp, err = os.OpenFile(pgsql_filename, os.O_CREATE, 0644)
+	fp, err = os.OpenFile(pgsql_filename, os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -412,7 +412,7 @@ func main() {
 			return
 		}
 	}
-	fp, err = os.OpenFile(sqlite3_filename, os.O_CREATE, 0644)
+	fp, err = os.OpenFile(sqlite3_filename, os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		fmt.Println(err)
 		return
