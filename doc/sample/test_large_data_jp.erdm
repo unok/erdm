@@ -71,7 +71,7 @@ orders/注文
     track_no/送り状番号 [varchar(64)]
     user_id/顧客ID [bigint][NN] 0..*--1 users
     item_id/商品ID [bigint][NN] 0..*--1 items
-    category_id/分類ID [bigint][NN][U] 0..*--1 categorie
+    category_id/分類ID [bigint][NN][U] 0..*--1 categories
     order_address_id/発注者住所 [bigint][NN] 0..*--1 addresses
     delivery_address_id/納品先住所 [bigint][NN] 0..*--1 addresses
     charge_address_id/請求先住所 [bigint][NN] 0..*--1 addresses
