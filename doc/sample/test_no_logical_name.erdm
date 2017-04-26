@@ -1,0 +1,23 @@
+# Title: ER Sample
+
+users
+    +id [bigserial][NN][U]
+    nick_name [varchar(128)][NN]
+    password [varchar(128)]
+    profile [text]
+
+articles
+    +id [bigserial][NN][U]
+    title [varchar(256)][NN]
+    contents [text][NN]
+    owner_user_id [bigint][NN] 0..*--1 users
+
+tags
+    +id [bigserial][NN][U]
+    name [varchar(256)][NN][U]
+
+article_tags
+    +id [bigserial][NN][U]
+    article_id [bigint][NN] 0..*--1 users
+    tag_id [bigint][NN] 0..*--1 tags
+
