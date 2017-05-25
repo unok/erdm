@@ -6,7 +6,7 @@
     </font></td></tr>
     {{- range $k, $c := .Columns}}
     <tr><td align="left">
-    {{- if ne .Title ""}}{{- .Title}}/{{end}}{{.TitleReal}}  {{.Type}} {{if (or (not .AllowNull) .IsUnique) -}}
+    {{- if ne .Title ""}}{{- .Title}}/{{end}}{{.TitleReal}}  {{.Type}} {{if (and (not .AllowNull) .IsUnique) -}}
     (UNN)
     {{- else if not .AllowNull -}}
     (NN)
