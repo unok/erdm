@@ -64,7 +64,7 @@
                                                         <td style="white-space: nowrap;">{{"{{column.name}}"}}</td>
                                                         <td style="white-space: nowrap;">{{"{{column.type}}"}}</td>
                                                         <td style="text-align: center;">{{"{{column.is_pkey ? '&#9745;' : ''}}"}}</td>
-                                                        <td style="text-align: center;">{{"{{column.is_not_null ? '&#9745;' : ''}}"}}</td>
+                                                        <td style="text-align: center;">{{"{{column.is_null ? '' : '&#9745;'}}"}}</td>
                                                         <td style="text-align: center;">{{"{{column.is_unique ? '&#9745;' : ''}}"}}</td>
                                                         <td style="white-space: nowrap;"><span ng-if="column.relation_table">-&gt;<a href="#table-{{"{{column.relation_table}}"}}">{{"{{column.relation_table}}"}}</a></span></td>
                                                         <td style="white-space: nowrap;">{{"{{column.default}}"}}</td>
@@ -120,7 +120,7 @@
                      "is_pkey": {{$c.IsPrimaryKey}},
                      "is_unique": {{$c.IsUnique}},{{if .HasDefaultSetting}}
                      "default": "{{$c.Default}}",{{end}}
-                     "is_not_null": {{$c.AllowNull}},{{if .HasRelation}}
+                     "is_null": {{$c.AllowNull}},{{if .HasRelation}}
                      "relation_from": "{{$c.Relation.CardinalitySource}}",
                      "relation_to": "{{$c.Relation.CardinalityDestination}}",
                      "relation_table": "{{$c.Relation.TableNameReal}}",{{end}}{{if .HasComment}}
