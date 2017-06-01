@@ -1,4 +1,7 @@
-{{define "dot_relations"}}{{range $k, $t := .Tables}}{{range .Columns}}{{if ne .Relation.TableNameReal ""}}
+{{define "dot_relations"}}
+{{- range $k, $t := .Tables -}}
+{{- range .Columns -}}
+{{- if (and (ne .Relation.TableNameReal "") (not .WithoutErd)) }}
 
   edge [
     arrowhead = "none"

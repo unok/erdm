@@ -38,6 +38,7 @@ type Column struct {
 	Relation     TableRelation
 	Comments     []string
 	IndexIndexes []int
+	WithoutErd   bool
 }
 
 type Table struct {
@@ -101,7 +102,7 @@ func (e *ErdM) addPrimaryKey(text string) {
 }
 
 func (e *ErdM) setColumnNameReal(t string) {
-	e.Tables[e.CurrentTableId].Columns = append(e.Tables[e.CurrentTableId].Columns, Column{TitleReal: t, AllowNull: true, IsUnique: false, IsForeignKey: false})
+	e.Tables[e.CurrentTableId].Columns = append(e.Tables[e.CurrentTableId].Columns, Column{TitleReal: t, AllowNull: true, IsUnique: false, IsForeignKey: false, WithoutErd: false})
 	e.Tables[e.CurrentTableId].CurrentColumnId = len(e.Tables[e.CurrentTableId].Columns) - 1
 	e.Tables[e.CurrentTableId].Columns[e.Tables[e.CurrentTableId].CurrentColumnId].IsPrimaryKey = e.Tables[e.CurrentTableId].isPrimaryKey(e.Tables[e.CurrentTableId].CurrentColumnId)
 }
@@ -125,7 +126,9 @@ func (e *ErdM) setUnique() {
 func (e *ErdM) setColumnDefault(t string) {
 	e.Tables[e.CurrentTableId].Columns[e.Tables[e.CurrentTableId].CurrentColumnId].Default = t
 }
-
+func (e *ErdM) setWithoutErd() {
+	e.Tables[e.CurrentTableId].Columns[e.Tables[e.CurrentTableId].CurrentColumnId].WithoutErd = true
+}
 func (e *ErdM) setRelationSource(t string) {
 	e.Tables[e.CurrentTableId].Columns[e.Tables[e.CurrentTableId].CurrentColumnId].Relation.CardinalitySource = t
 	e.Tables[e.CurrentTableId].Columns[e.Tables[e.CurrentTableId].CurrentColumnId].IsForeignKey = true

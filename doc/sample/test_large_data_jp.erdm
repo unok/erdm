@@ -6,8 +6,8 @@ users/顧客
     password/パスワード [varchar(128)][='********']
         # sha1 でハッシュ化して登録
     mail_address/メールアドレス [varchar(256)][NN][U]
-    updated/更新日時 [timestamp with time zone][NN][=now()]
-    created/作成日時 [timestamp with time zone][NN][=now()]
+    updated/更新日時 [timestamp with time zone][NN][=now()][-erd]
+    created/作成日時 [timestamp with time zone][NN][=now()][-erd]
     index i_users_mail_address (mail_address)
 
 prefectures/都道府県
