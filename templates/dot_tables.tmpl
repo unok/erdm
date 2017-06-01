@@ -5,6 +5,7 @@
     {{- if ne .Title ""}}{{.Title}}/{{end}}{{.TitleReal -}}
     </font></td></tr>
     {{- range $k, $c := .Columns}}
+    {{- if (not .WithoutErd) -}}
     <tr><td align="left">
     {{- if ne .Title ""}}{{- .Title}}/{{end}}{{.TitleReal}}  {{.Type}} {{if (and (not .AllowNull) .IsUnique) -}}
     (UNN)
@@ -17,5 +18,5 @@
     {{- end}}{{if .IsForeignKey -}}
     F
     {{- end}}</td><td>
-    {{- range $ik, $iv := .IndexIndexes}}I{{$iv}} {{end}}</td></tr>{{end}}</table>>];
+    {{- range $ik, $iv := .IndexIndexes}}I{{$iv}} {{end}}</td></tr>{{end}}{{end}}</table>>];
 {{end}}{{end}}
