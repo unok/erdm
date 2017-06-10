@@ -29,8 +29,8 @@ addresses/住所
     prefecture_id/都道府県コード [bigint][NN] 0..*--1 prefectures
     address1/住所1 [varchar(128)][NN]
     address2/住所2 [varchar(128)]
-    updated/更新日時 [timestamp with time zone][NN][=now()]
-    created/作成日時 [timestamp with time zone][NN][=now()]
+    updated/更新日時 [timestamp with time zone][NN][=now()][-erd]
+    created/作成日時 [timestamp with time zone][NN][=now()][-erd]
     index i_addresses_user_id (user_id)
     index i_addresses_address_type_id (address_type_id)
     index i_addresses_prefecture_id (prefecture_id)
@@ -41,14 +41,14 @@ items/商品
     description/詳細 [text]
     quantity/数量 [int][NN]
     price/単価 [numeric(10,2)][NN]
-    updated/更新日時 [timestamp with time zone][NN][=now()]
-    created/作成日時 [timestamp with time zone][NN][=now()]
+    updated/更新日時 [timestamp with time zone][NN][=now()][-erd]
+    created/作成日時 [timestamp with time zone][NN][=now()][-erd]
 
 carts/カート
     +id/カートID [bigserial][NN][U]
     user_id/顧客ID [bigint][NN] 0..*--1 users
-    updated/更新日時 [timestamp with time zone][NN][=now()]
-    created/作成日時 [timestamp with time zone][NN][=now()]
+    updated/更新日時 [timestamp with time zone][NN][=now()][-erd]
+    created/作成日時 [timestamp with time zone][NN][=now()][-erd]
     index i_carts_user_id (user_id)
 
 cart_items/カート内アイテム
@@ -57,8 +57,8 @@ cart_items/カート内アイテム
     item_id/商品ID [bigint][NN] 0..*--1 items
     category_id/分類ID [bigint][NN][U] 0..*--1 categories
     quantity/数量 [int][NN]
-    updated/更新日時 [timestamp with time zone][NN][=now()]
-    created/作成日時 [timestamp with time zone][NN][=now()]
+    updated/更新日時 [timestamp with time zone][NN][=now()][-erd]
+    created/作成日時 [timestamp with time zone][NN][=now()][-erd]
     index i_cart_items_cart_id (cart_id)
 
 orders/注文
@@ -75,8 +75,8 @@ orders/注文
     order_address_id/発注者住所 [bigint][NN] 0..*--1 addresses
     delivery_address_id/納品先住所 [bigint][NN] 0..*--1 addresses
     charge_address_id/請求先住所 [bigint][NN] 0..*--1 addresses
-    updated/更新日時 [timestamp with time zone][NN][=now()]
-    created/作成日時 [timestamp with time zone][NN][=now()]
+    updated/更新日時 [timestamp with time zone][NN][=now()][-erd]
+    created/作成日時 [timestamp with time zone][NN][=now()][-erd]
     index i_orders_cart_id (cart_id)
     index i_orders_user_id (user_id)
     index i_orders_item_id (item_id)
@@ -87,8 +87,8 @@ categories/分類
     name/タグ [varchar(128)][NN]
     description/説明 [text]
     parent_category_id/親分類ID [bigint] 0..*--0..1 categories
-    updated/更新日時 [timestamp with time zone][NN][=now()]
-    created/作成日時 [timestamp with time zone][NN][=now()]
+    updated/更新日時 [timestamp with time zone][NN][=now()][-erd]
+    created/作成日時 [timestamp with time zone][NN][=now()][-erd]
     
 item_categories/商品分類
     +id/商品分類ID [bigserial][NN][U]
@@ -103,5 +103,5 @@ administrators/管理者
     mail_address/メールアドレス [varchar(256)][NN][U]
     password/パスワード [varchar(128)][='********']
       # sha1 でハッシュ化して登録
-    updated/更新日時 [timestamp with time zone][NN][=now()]
-    created/作成日時 [timestamp with time zone][NN][=now()]
+    updated/更新日時 [timestamp with time zone][NN][=now()][-erd]
+    created/作成日時 [timestamp with time zone][NN][=now()][-erd]
