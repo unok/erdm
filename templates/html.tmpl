@@ -108,8 +108,8 @@
                    "index_list": [
                    {{- range $ii, $iv := $t.Indexes}}
                    {"title": "{{$iv.Title}}",
-                   "columns": "{{range $iic := $iv.Columns}}{{$iic}}  {{end}}",
-                   "is_unique": "{{$iv.IsUnique}}"},
+                   "is_unique": {{$iv.IsUnique}},
+                   "columns": "{{range $iic := $iv.Columns}}{{$iic}}  {{end}}"},
                    {{end}}
                    ],
                    "column_list": [

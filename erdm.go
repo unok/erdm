@@ -147,7 +147,7 @@ func (e *ErdM) addComment(t string) {
 }
 
 func (e *ErdM) setIndexName(t string) {
-	e.Tables[e.CurrentTableId].Indexes = append(e.Tables[e.CurrentTableId].Indexes, Index{Title: t})
+	e.Tables[e.CurrentTableId].Indexes = append(e.Tables[e.CurrentTableId].Indexes, Index{Title: t, IsUnique: false})
 	e.Tables[e.CurrentTableId].CurrentIndexId = len(e.Tables[e.CurrentTableId].Indexes) - 1
 }
 
