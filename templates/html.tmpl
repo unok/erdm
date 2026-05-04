@@ -36,7 +36,7 @@
                     <img src="{{.ImageFilename}}" class="img-fluid" style="max-width: 900px;" alt="ERD"/>
                     <h2>Table List</h2>
                     {{- range $t := .Tables}}
-                    <div class="table-block" id="table-{{$t.TitleReal}}" data-search="{{$t.TitleReal}} {{$t.Title}}{{range $c := $t.Columns}} {{$c.TitleReal}} {{$c.Title}} {{$c.Type}}{{range $cc := $c.Comments}} {{$cc}}{{end}}{{end}}{{range $iv := $t.Indexes}} {{$iv.Title}}{{end}}">
+                    <div class="table-block" id="table-{{$t.TitleReal}}" data-search="{{$t.TitleReal}} {{$t.Title}}{{range $c := $t.Columns}} {{$c.TitleReal}} {{$c.Title}} {{$c.Type}} {{$c.Default}} {{$c.Relation.TableNameReal}}{{range $cc := $c.Comments}} {{$cc}}{{end}}{{end}}{{range $iv := $t.Indexes}} {{$iv.Title}} {{$iv.GetIndexColumns}}{{end}}">
                         <div class="table-responsive">
                             <table class="table table-bordered">
                                 <tbody>
