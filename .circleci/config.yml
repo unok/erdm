@@ -1,0 +1,65 @@
+version: 2.1
+
+jobs:
+  build:
+    docker:
+      - image: cimg/go:1.26
+    environment:
+      TZ: Asia/Tokyo
+    steps:
+      - checkout
+      - run:
+          name: Install build tools
+          command: |
+            go install github.com/pointlander/peg@latest
+            go install github.com/mitchellh/gox@latest
+            go install github.com/tcnksm/ghr@latest
+      - run:
+          name: Generate parser
+          command: peg erdm.peg
+      - run:
+          name: Build
+          command: go build ./...
+
+  release:
+    docker:
+      - image: cimg/go:1.26
+    environment:
+      TZ: Asia/Tokyo
+    steps:
+      - checkout
+      - run:
+          name: Install build tools
+          command: |
+            go install github.com/pointlander/peg@latest
+            go install github.com/mitchellh/gox@latest
+            go install github.com/tcnksm/ghr@latest
+      - run:
+          name: Generate parser
+          command: peg erdm.peg
+      - run:
+          name: Cross compile
+          command: |
+            gox -osarch "linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64 windows/386" \
+                -output "dist/{{.Dir}}_{{.OS}}_{{.Arch}}"
+      - run:
+          name: Publish GitHub release
+          command: |
+            ghr -t "${GITHUB_TOKEN}" -u "${USERNAME}" -r "${CIRCLE_PROJECT_REPONAME}" \
+                --replace "$(cat release_tag)" dist/
+
+workflows:
+  ci:
+    jobs:
+      - build:
+          filters:
+            tags:
+              only: /.*/
+      - release:
+          requires:
+            - build
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /^v(0|[1-9][0-9]*)(\.(0|[1-9][0-9]*)){2}$/

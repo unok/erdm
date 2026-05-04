@@ -6,6 +6,7 @@ import (
 	"log"
 	"io/ioutil"
 	"reflect"
+	htmltemplate "html/template"
 	"text/template"
 	"os/exec"
 	"strings"
@@ -336,8 +337,14 @@ func main() {
 		fmt.Println(err)
 		return
 	}
-	t, err := template.New("template").Parse(string(dot_string) + string(dot_tables_string) + string(dot_relations_string) + string(html_string) + string(pg_ddl_string) + string(sqlite3_ddl_string))
-	// "templates/dot.tmpl", "templates/dot_tables.tmpl", "templates/dot_relations.tmpl", "templates/html.tmpl", "templates/pg_ddl.tmpl")
+	// dot/SQL は raw text（text/template）。html だけは context-aware に
+	// HTML エスケープしたいので html/template を使う。
+	t, err := template.New("template").Parse(string(dot_string) + string(dot_tables_string) + string(dot_relations_string) + string(pg_ddl_string) + string(sqlite3_ddl_string))
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	htmlT, err := htmltemplate.New("html").Parse(string(html_string))
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -382,7 +389,7 @@ func main() {
 		fmt.Println(err)
 		return
 	}
-	err = t.ExecuteTemplate(fp, "html", parser.ErdM)
+	err = htmlT.ExecuteTemplate(fp, "html", parser.ErdM)
 	if err != nil {
 		fmt.Println(err)
 		return
