@@ -1,0 +1,5 @@
+# Title: compound pk
+
+uk
+    +a [int][NN]
+    +b [int][NN]
