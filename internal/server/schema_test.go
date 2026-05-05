@@ -231,6 +231,39 @@ func TestHandlePutSchema_ValidBody_PreservesBytes(t *testing.T) {
 	}
 }
 
+// TestHandlePutSchema_BodyTooLarge_Returns413 は maxSchemaBodyBytes を超える
+// リクエストが 413 で拒絶され、元ファイルが破壊されないことを確認する
+// （Copilot レビュー指摘 #2）。
+func TestHandlePutSchema_BodyTooLarge_Returns413(t *testing.T) {
+	path := writeSchemaFileWith(t, validSchemaSrc)
+	_, ts := newTestServerWith(t, Config{SchemaPath: path, Port: 0, Listen: "127.0.0.1"})
+
+	oversized := bytes.Repeat([]byte("x"), maxSchemaBodyBytes+1)
+	req, err := http.NewRequest(http.MethodPut, ts.URL+"/api/schema", bytes.NewReader(oversized))
+	if err != nil {
+		t.Fatalf("NewRequest: %v", err)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("PUT /api/schema: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusRequestEntityTooLarge {
+		t.Fatalf("status: got %d, want %d", resp.StatusCode, http.StatusRequestEntityTooLarge)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	if !strings.Contains(string(body), "request_body_too_large") {
+		t.Fatalf("body should contain request_body_too_large, got: %s", body)
+	}
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read schema after oversized PUT: %v", err)
+	}
+	if string(got) != validSchemaSrc {
+		t.Fatalf("schema file should not be modified on 413\nwant=%q\ngot =%q", validSchemaSrc, got)
+	}
+}
+
 // TestHandleSchema_MethodNotAllowed_Returns405 は GET / PUT 以外の
 // メソッドが 405 で拒絶されることを確認する。
 func TestHandleSchema_MethodNotAllowed_Returns405(t *testing.T) {

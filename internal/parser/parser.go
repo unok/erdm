@@ -23,6 +23,12 @@ func Parse(src []byte) (*model.Schema, *ParseError) {
 		return nil, &ParseError{Pos: 0, Line: 1, Column: 1, Message: err.Error()}
 	}
 	if err := p.Parse(); err != nil {
+		// PEG が文法マッチに失敗した時点で parserBuilder.Err(pos, buffer) が呼ばれ、
+		// parseErr に正確な行・列が積まれている。これを優先して返すことで API
+		// 利用者（/api/schema 等）が常に 1:1 を見せられる挙動を避ける。
+		if p.parserBuilder.parseErr != nil {
+			return nil, p.parserBuilder.parseErr
+		}
 		return nil, &ParseError{Pos: 0, Line: 1, Column: 1, Message: err.Error()}
 	}
 	p.Execute()

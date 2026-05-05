@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"os"
@@ -9,6 +10,11 @@ import (
 
 	"github.com/unok/erdm/internal/parser"
 )
+
+// maxSchemaBodyBytes は PUT /api/schema が受け付けるリクエストボディの上限。
+// .erdm はテキストでありローカル運用前提でも、io.ReadAll の OOM 防止と
+// 誤送信検出のため上限を置く（4 MiB は実用上のスキーマ規模に対し充分大きい）。
+const maxSchemaBodyBytes = 4 * 1024 * 1024
 
 // handleSchema は /api/schema の HTTP メソッドを GET / PUT に振り分ける。
 // それ以外のメソッドは 405 で拒絶する（要件 5.4 / 7.7 / 7.8 / 7.9）。
@@ -60,12 +66,20 @@ func (s *Server) handlePutSchema(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	r.Body = http.MaxBytesReader(w, r.Body, maxSchemaBodyBytes)
+	defer r.Body.Close()
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
+		// http.MaxBytesError の場合は 413 を返し、他のボディ読み取りエラーは
+		// 引き続き 400 として扱う（要件 7.7 / 7.8 / 7.9 と整合）。
+		var maxErr *http.MaxBytesError
+		if errors.As(err, &maxErr) {
+			writeJSONError(w, http.StatusRequestEntityTooLarge, "request_body_too_large", err.Error())
+			return
+		}
 		writeJSONError(w, http.StatusBadRequest, "request_body_error", err.Error())
 		return
 	}
-	defer r.Body.Close()
 
 	if _, parseErr := parser.Parse(body); parseErr != nil {
 		writeJSONErrorWithDetail(w, http.StatusBadRequest,

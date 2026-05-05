@@ -46,9 +46,18 @@ export interface CanvasProps {
 export function Canvas({ schema, initialLayout, onNodeClick }: CanvasProps): JSX.Element {
   const initialNodes = buildNodes(schema, initialLayout)
   const initialEdges = buildEdges(schema)
-  const [nodes, , onNodesChange] = useNodesState(initialNodes)
-  const [edges, , onEdgesChange] = useEdgesState(initialEdges)
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
   const debounceTimerRef = useRef<number | null>(null)
+
+  // schema / initialLayout が更新されたら React Flow の state を同期する。
+  // useNodesState は初期値しか拾わないため、Editor 側でテーブル追加/編集して
+  // schema が差し替わっても Canvas が古いノード集合のままになってしまう
+  // （Copilot レビュー指摘 #5）。propsを単一の正としてsetterで上書きする。
+  useEffect(() => {
+    setNodes(buildNodes(schema, initialLayout))
+    setEdges(buildEdges(schema))
+  }, [schema, initialLayout, setNodes, setEdges])
 
   const scheduleSave = useCallback((latestNodes: Node[]) => {
     if (debounceTimerRef.current !== null) {

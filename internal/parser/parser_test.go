@@ -344,6 +344,24 @@ func TestParseError_Format(t *testing.T) {
 	}
 }
 
+// TestParse_SyntaxError_PreservesLineColumn は構文エラーの Line/Column が
+// 1:1 にハードコードされず、PEG が報告する実際の失敗位置を保持していること
+// を確認する（Copilot レビュー指摘 #1）。
+func TestParse_SyntaxError_PreservesLineColumn(t *testing.T) {
+	// 2 行目以降に明確に文法違反となるトークンを置く。
+	src := []byte("# Title: g\n" +
+		"users\n" +
+		"    @@@invalid_token@@@\n")
+	schema, perr := Parse(src)
+	if perr == nil {
+		t.Fatalf("expected ParseError, got schema=%v", schema)
+	}
+	if perr.Line == 1 && perr.Column == 1 {
+		t.Errorf("ParseError Line/Column should not be hard-coded 1:1, got Line=%d Column=%d (Pos=%d)",
+			perr.Line, perr.Column, perr.Pos)
+	}
+}
+
 // TestNewParseError_LineColumn は newParseError が 1-based Line/Column を
 // 正しく算出することを確認する。
 func TestNewParseError_LineColumn(t *testing.T) {

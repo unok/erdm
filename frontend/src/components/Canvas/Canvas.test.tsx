@@ -11,6 +11,7 @@
 // Requirements: 5.10, 5.11, 6.1
 
 import { render, screen } from '@testing-library/react'
+import { useState } from 'react'
 import {
   afterEach,
   beforeEach,
@@ -61,8 +62,18 @@ vi.mock('reactflow', () => {
   const Background = (): null => null
   const Controls = (): null => null
   const MiniMap = (): null => null
-  const useNodesState = <T,>(initial: T) => [initial, () => undefined, () => undefined]
-  const useEdgesState = <T,>(initial: T) => [initial, () => undefined, () => undefined]
+  // 実環境同様、初期値のみを尊重して以降の prop 変化は setter 経由でしか
+  // 反映しないように useState で「最初の initial だけ採用」するセマンティクス
+  // を再現する。これにより Canvas 側の useEffect が setNodes/setEdges を呼ぶ
+  // パスがないとノード・エッジが更新されない、本来の振る舞いを検査できる。
+  const useNodesState = <T,>(initial: T): [T, (next: T) => void, () => void] => {
+    const [state, setState] = useState<T>(initial)
+    return [state, setState, () => undefined]
+  }
+  const useEdgesState = <T,>(initial: T): [T, (next: T) => void, () => void] => {
+    const [state, setState] = useState<T>(initial)
+    return [state, setState, () => undefined]
+  }
   return {
     default: ReactFlow,
     Background,
@@ -175,6 +186,38 @@ describe('Canvas', () => {
     render(<Canvas schema={SCHEMA} initialLayout={LAYOUT} onNodeClick={onNodeClick} />)
     screen.getByTestId('rf-click').click()
     expect(onNodeClick).toHaveBeenCalledWith('users')
+  })
+
+  it('updates nodes/edges when schema or layout props change (Copilot review #5)', () => {
+    const SCHEMA_NEXT: Schema = {
+      Title: 't',
+      Groups: [],
+      Tables: [
+        {
+          Name: 'products',
+          LogicalName: '',
+          Columns: [],
+          PrimaryKeys: [],
+          Indexes: [],
+          Groups: [],
+        },
+      ],
+    }
+    const LAYOUT_NEXT: Layout = { products: { x: 50, y: 50 } }
+    const { rerender } = render(<Canvas schema={SCHEMA} initialLayout={LAYOUT} />)
+    expect(
+      JSON.parse(screen.getByTestId('rf-nodes').textContent ?? '[]')
+        .map((n: { id: string }) => n.id),
+    ).toEqual(['users', 'orders'])
+
+    rerender(<Canvas schema={SCHEMA_NEXT} initialLayout={LAYOUT_NEXT} />)
+    expect(
+      JSON.parse(screen.getByTestId('rf-nodes').textContent ?? '[]')
+        .map((n: { id: string }) => n.id),
+    ).toEqual(['products'])
+    expect(
+      JSON.parse(screen.getByTestId('rf-edges').textContent ?? '[]'),
+    ).toEqual([])
   })
 
   it('debounces putLayout after onNodeDragStop', () => {
