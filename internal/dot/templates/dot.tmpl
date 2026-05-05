@@ -1,0 +1,15 @@
+{{define "dot"}}digraph g {
+  rankdir=LR;
+  splines=ortho;
+  nodesep=0.8;
+  ranksep=1.2;
+  concentrate=false;
+  node [shape=box,style=rounded,height=0.08,fontname="Noto Sans Mono CJK JP"];
+{{range $c := .Clusters}}
+  subgraph cluster_{{$c.Name}} {
+    label="{{$c.Label}}";
+{{template "dot_tables" $c.Tables}}  }
+{{end}}{{template "dot_tables" .UngroupedTables}}
+{{template "dot_relations" .Edges}}
+}
+{{end}}

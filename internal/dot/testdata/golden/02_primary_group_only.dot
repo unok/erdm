@@ -1,0 +1,30 @@
+digraph g {
+  rankdir=LR;
+  splines=ortho;
+  nodesep=0.8;
+  ranksep=1.2;
+  concentrate=false;
+  node [shape=box,style=rounded,height=0.08,fontname="Noto Sans Mono CJK JP"];
+
+  subgraph cluster_auth {
+    label="auth";
+
+
+  users [label = <<table border="0" cellborder="0" cellpadding="0">
+    <tr><td colspan="2"><font face="Ricty-Bold">users</font></td></tr><tr><td align="left">id  int (NN)</td><td>P</td><td></td></tr><tr><td align="left">name  varchar(64) (NN)</td><td></td><td></td></tr></table>>];
+
+  sessions [label = <<table border="0" cellborder="0" cellpadding="0">
+    <tr><td colspan="2"><font face="Ricty-Bold">sessions</font></td></tr><tr><td align="left">id  int (NN)</td><td>P</td><td></td></tr><tr><td align="left">user_id  int (NN)</td><td>F</td><td></td></tr></table>>];
+  }
+
+
+
+
+  edge [
+    arrowhead = "none"
+    headlabel = "0..*"
+    taillabel = "1"
+  ]
+  users -> sessions
+
+}

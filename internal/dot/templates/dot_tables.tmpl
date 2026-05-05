@@ -1,0 +1,22 @@
+{{define "dot_tables"}}
+{{range $tk, $t := .}}
+  {{.Name}} [label = <<table border="0" cellborder="0" cellpadding="0">
+    <tr><td colspan="2"><font face="Ricty-Bold">
+    {{- if ne .LogicalName ""}}{{.LogicalName}}/{{end}}{{.Name -}}
+    </font></td></tr>
+    {{- range $k, $c := .Columns}}
+    {{- if (not .WithoutErd) -}}
+    <tr><td align="left">
+    {{- if ne .LogicalName ""}}{{- .LogicalName}}/{{end}}{{.Name}}  {{.Type}} {{if (and (not .AllowNull) .IsUnique) -}}
+    (UNN)
+    {{- else if not .AllowNull -}}
+    (NN)
+    {{- else if .IsUnique -}}
+    (U)
+    {{- end}}</td><td>{{if .IsPrimaryKey -}}
+    P
+    {{- end}}{{if .FK -}}
+    F
+    {{- end}}</td><td>
+    {{- range $ik, $iv := .IndexRefs}}I{{$iv}} {{end}}</td></tr>{{end}}{{end}}</table>>];
+{{end}}{{end}}

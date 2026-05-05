@@ -1,0 +1,10 @@
+{{define "dot_relations"}}
+{{- range . }}
+
+  edge [
+    arrowhead = "none"
+    headlabel = "{{.HeadLabel}}"
+    taillabel = "{{.TailLabel}}"
+  ]
+  {{.Parent}} -> {{.Child}}
+{{end}}{{end}}
