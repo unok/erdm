@@ -27,8 +27,11 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DESIGN_PATH="${1:-$REPO_ROOT/.kiro/specs/elk-webui-migration/design.md}"
 
 if [ ! -f "$DESIGN_PATH" ]; then
-    echo "ERROR: design.md not found at: $DESIGN_PATH" >&2
-    exit 2
+    # .kiro/ はバージョン管理対象外（個人ローカル / CI には未配布）であるため、
+    # design.md が存在しない環境では網羅検証をスキップして 0 終了する。
+    # 検証が必要な場合は明示的にパスを引数指定するか、design.md を配置すること。
+    echo "WARN: design.md not found at: $DESIGN_PATH; skipping requirement-coverage check." >&2
+    exit 0
 fi
 
 # UTF-8 全角チルダ（〜, U+301C）。range セパレータとして使われる。
