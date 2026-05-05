@@ -25,8 +25,8 @@ jobs:
           go-version-file: go.mod
       - name: Install build tools
         run: |
-          go install github.com/pointlander/peg@latest
-          go install github.com/mitchellh/gox@latest
+          go install github.com/pointlander/peg@v1.0.1
+          go install github.com/mitchellh/gox@v1.0.1
       - name: Generate parser
         run: peg erdm.peg
       - name: Cross compile

@@ -17,7 +17,7 @@ jobs:
         with:
           go-version-file: go.mod
       - name: Install build tools
-        run: go install github.com/pointlander/peg@latest
+        run: go install github.com/pointlander/peg@v1.0.1
       - name: Generate parser
         run: peg erdm.peg
       - name: Build

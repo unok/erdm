@@ -4,10 +4,10 @@
 # 真実のソース: もとの .circleci/config.yml と .takt/runs/.../reports/plan.md。
 #
 # 実行: bash test_workflows.sh
-# 依存: yq (>=3), bash, grep
+# 依存: yq (>=4, jq 互換構文), bash, grep
 # 終了コード: 0=全テストパス / 1=失敗あり
 
-set -u
+set -uo pipefail
 
 # プロジェクトルート（このスクリプトの置き場所）に移動する。
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -136,9 +136,9 @@ assert "Given ci.yml, When configuring Go, Then go-version is NOT hardcoded" \
 echo ""
 echo "[Section 4] release.yml 振る舞い"
 
-# トリガー: タグ push のみ
-assert "Given release.yml, When triggered, Then push tags filter is configured" \
-  'yq -r ".\"on\".push.tags[]" "${RELEASE_YML}" 2>/dev/null | grep -q "v"'
+# トリガー: タグ push のみ。フィルタは厳密に v*.*.* (semver 形式) であること
+assert "Given release.yml, When triggered, Then push tags filter is exactly v*.*.*" \
+  'yq -r ".\"on\".push.tags[]" "${RELEASE_YML}" 2>/dev/null | grep -qx "v\*\.\*\.\*"'
 
 assert "Given release.yml, When triggered, Then pull_request is NOT a trigger (release のみ)" \
   '! yq -r ".\"on\" | keys[]" "${RELEASE_YML}" 2>/dev/null | grep -qx "pull_request"'
