@@ -102,7 +102,7 @@ erdm serve [--port=N] [--listen=ADDR] [--no-write] schema.erdm
 `erdm import` は稼働中の PostgreSQL / MySQL / SQLite に接続し、現在のスキーマから `.erdm` ソースファイルを生成します。
 
 ```text
-erdm import --dsn=<DSN> [--driver=postgres|mysql|sqlite] [--out=PATH] [--title=NAME] [--schema=NAME]
+erdm import --dsn=<DSN> [--driver=postgres|mysql|sqlite] [--out=PATH] [--title=NAME] [--schema=NAME] [--no-infer-fk]
 ```
 
 | フラグ | 既定値 | 説明 |
@@ -112,6 +112,7 @@ erdm import --dsn=<DSN> [--driver=postgres|mysql|sqlite] [--out=PATH] [--title=N
 | `--out=PATH` | 標準出力 | 出力先 `.erdm` ファイルパス。親ディレクトリは事前に存在している必要があります。 |
 | `--title=NAME` | DB 名（PG / MySQL）／ファイル名ベース（SQLite） | 出力 `.erdm` の `# Title:` 行に書き込まれるタイトル。 |
 | `--schema=NAME` | `public`（PostgreSQL）／ `SELECT DATABASE()` で解決した接続先 DB 名（MySQL） | 取得対象スキーマ名。SQLite では無視されます。 |
+| `--no-infer-fk` | off（推測 ON） | 命名規約による FK 推測を無効化します。既定では `<entity>_id` 列について、`entity` を複数形化したテーブル名（例: `tenant_id` → `tenants`、`system_agency_id` → `system_agencies`、`system_media_id` → `system_media`）が存在する場合に FK 関係を自動付与します。複数形化は [jinzhu/inflection](https://github.com/jinzhu/inflection) を使用し、不規則変化（`person` → `people`）や不可算名詞（`media` / `data`）も辞書ベースで処理されます。DB 側に明示 FK 制約がある列・自テーブル参照になる候補・列名が `id` 単独のものは推測対象外です。 |
 
 ドライバ自動判定（大文字小文字を区別しません）:
 

@@ -53,7 +53,7 @@ var spaDistFS embed.FS
 // `[render]` ではなく旧形式の表記を維持し、後方互換を読み手に明示する。
 const usageRender = "Usage: erdm [-output_dir DIR] [--format=dot|elk] schema.erdm"
 const usageServe = "Usage: erdm serve [--port=N] [--listen=ADDR] [--no-write] schema.erdm"
-const usageImport = "usage: erdm import --dsn=<DSN> [--driver=postgres|mysql|sqlite] [--out=PATH] [--title=NAME] [--schema=NAME]"
+const usageImport = "usage: erdm import --dsn=<DSN> [--driver=postgres|mysql|sqlite] [--out=PATH] [--title=NAME] [--schema=NAME] [--no-infer-fk]"
 
 func main() {
 	args := os.Args[1:]
@@ -300,6 +300,7 @@ func runImport(args []string) error {
 	out := fs.String("out", "", "output file path (stdout if empty)")
 	title := fs.String("title", "", "schema title (defaults to DB name or file base)")
 	schemaName := fs.String("schema", "", "schema name (PostgreSQL/MySQL only)")
+	noInferFK := fs.Bool("no-infer-fk", false, "disable naming-convention FK inference (`<entity>_id` → plural-of-entity table)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -308,10 +309,11 @@ func runImport(args []string) error {
 	}
 
 	opts := introspect.Options{
-		Driver: introspect.Driver(*driver),
-		DSN:    *dsn,
-		Schema: *schemaName,
-		Title:  *title,
+		Driver:    introspect.Driver(*driver),
+		DSN:       *dsn,
+		Schema:    *schemaName,
+		Title:     *title,
+		NoInferFK: *noInferFK,
 	}
 	schema, err := introspect.Introspect(context.Background(), opts)
 	if err != nil {

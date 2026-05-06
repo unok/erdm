@@ -26,4 +26,9 @@ type Options struct {
 
 	// Title は --title の値。空文字列はドライバごとの既定値解決に委ねる。
 	Title string
+
+	// NoInferFK が true のとき、命名規約による FK 推測（`<single>_id` 列を
+	// 単数→複数化したテーブルへ繋ぐ）を無効化する。既定（false）では有効。
+	// 明示的な FK 制約がある列は常に優先され、推測対象外。
+	NoInferFK bool
 }

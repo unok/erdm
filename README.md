@@ -102,7 +102,7 @@ The `svg` / `png` export endpoints require `dot` (Graphviz) on `PATH`; without i
 `erdm import` connects to a running PostgreSQL, MySQL, or SQLite database and emits an `.erdm` source file from its current schema.
 
 ```text
-erdm import --dsn=<DSN> [--driver=postgres|mysql|sqlite] [--out=PATH] [--title=NAME] [--schema=NAME]
+erdm import --dsn=<DSN> [--driver=postgres|mysql|sqlite] [--out=PATH] [--title=NAME] [--schema=NAME] [--no-infer-fk]
 ```
 
 | Flag | Default | Description |
@@ -112,6 +112,7 @@ erdm import --dsn=<DSN> [--driver=postgres|mysql|sqlite] [--out=PATH] [--title=N
 | `--out=PATH` | stdout | Output `.erdm` file path. The parent directory must already exist. |
 | `--title=NAME` | DB name (PG / MySQL) or file base (SQLite) | Title written to the resulting `.erdm` (`# Title:` line). |
 | `--schema=NAME` | `public` (PostgreSQL) / connected DB via `SELECT DATABASE()` (MySQL) | Target schema name. Ignored for SQLite. |
+| `--no-infer-fk` | off (inference enabled) | Disable naming-convention FK inference. By default, columns ending with `_id` whose stripped base pluralizes to an existing table name (e.g. `tenant_id` → `tenants`, `system_agency_id` → `system_agencies`, `system_media_id` → `system_media`) get an inferred FK. Pluralization uses [jinzhu/inflection](https://github.com/jinzhu/inflection) so irregulars and uncountables (`person` → `people`, `media`, `data`) work. Explicit FK constraints from the database always take precedence; self-references and bare `id` columns are skipped. |
 
 Driver auto-detection (case-insensitive):
 
