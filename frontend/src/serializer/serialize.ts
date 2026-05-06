@@ -113,12 +113,23 @@ function formatColumnFlags(column: Column): string {
     flags += '[U]'
   }
   if (column.Default !== '') {
-    flags += `[=${column.Default}]`
+    flags += `[=${escapeDefaultExpr(column.Default)}]`
   }
   if (column.WithoutErd) {
     flags += '[-erd]'
   }
   return flags
+}
+
+// escapeDefaultExpr は `[=...]` の値部分に現れる `]` を `\]` にエスケープする。
+//
+// パーサ側 (`internal/parser/parser.peg` の `default` 規則 `'\\]' / (![\r\n\]] .)`)
+// が `\]` を `]` のエスケープと解釈する仕様に合わせ、Serialize 側では対称に
+// `]` を `\]` に再エスケープする。Go 側 `internal/serializer/format.go` の
+// `escapeDefaultExpr` と同じ規則（PostgreSQL の `'{}'::integer[]` 等を含む
+// default を round-trip させるための前提処理）。
+function escapeDefaultExpr(v: string): string {
+  return v.replace(/\]/g, '\\]')
 }
 
 // formatRelation は FK を `<src>--<dst> <target>` 形式で返す。

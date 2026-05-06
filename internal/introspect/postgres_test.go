@@ -92,8 +92,9 @@ func TestNormalizePGSerial(t *testing.T) {
 	}
 }
 
-// resolvePGType は USER-DEFINED 型のときだけ udt_name に切り替える
-// （他の型は data_type をそのまま採用する）。
+// resolvePGType は data_type が `USER-DEFINED` / `ARRAY` のときに udt_name を
+// 経由した正規化を行い、それ以外は data_type をそのまま採用する。配列要素は
+// pgArrayElementDisplay で `data_type` 寄りの表示名に揃える。
 func TestResolvePGType(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
@@ -102,16 +103,85 @@ func TestResolvePGType(t *testing.T) {
 		udtName  string
 		want     string
 	}{
+		// USER-DEFINED
 		{name: "user defined falls back to udt", dataType: "USER-DEFINED", udtName: "mood", want: "mood"},
+		{name: "user defined with empty udt is preserved", dataType: "USER-DEFINED", udtName: "", want: "USER-DEFINED"},
+		// 非配列・非ユーザ定義は data_type をそのまま採用
 		{name: "integer is preserved", dataType: "integer", udtName: "int4", want: "integer"},
 		{name: "text is preserved", dataType: "text", udtName: "text", want: "text"},
-		{name: "user defined with empty udt is preserved", dataType: "USER-DEFINED", udtName: "", want: "USER-DEFINED"},
+		{name: "character varying is preserved", dataType: "character varying", udtName: "varchar", want: "character varying"},
+		// ARRAY: 主要ビルトイン型
+		{name: "array of int4 -> integer[]", dataType: "ARRAY", udtName: "_int4", want: "integer[]"},
+		{name: "array of int8 -> bigint[]", dataType: "ARRAY", udtName: "_int8", want: "bigint[]"},
+		{name: "array of int2 -> smallint[]", dataType: "ARRAY", udtName: "_int2", want: "smallint[]"},
+		{name: "array of float4 -> real[]", dataType: "ARRAY", udtName: "_float4", want: "real[]"},
+		{name: "array of float8 -> double precision[]", dataType: "ARRAY", udtName: "_float8", want: "double precision[]"},
+		{name: "array of numeric -> numeric[]", dataType: "ARRAY", udtName: "_numeric", want: "numeric[]"},
+		{name: "array of bool -> boolean[]", dataType: "ARRAY", udtName: "_bool", want: "boolean[]"},
+		{name: "array of varchar -> character varying[]", dataType: "ARRAY", udtName: "_varchar", want: "character varying[]"},
+		{name: "array of bpchar -> character[]", dataType: "ARRAY", udtName: "_bpchar", want: "character[]"},
+		{name: "array of text -> text[]", dataType: "ARRAY", udtName: "_text", want: "text[]"},
+		{name: "array of bytea -> bytea[]", dataType: "ARRAY", udtName: "_bytea", want: "bytea[]"},
+		{name: "array of date -> date[]", dataType: "ARRAY", udtName: "_date", want: "date[]"},
+		{name: "array of time -> time without time zone[]", dataType: "ARRAY", udtName: "_time", want: "time without time zone[]"},
+		{name: "array of timetz -> time with time zone[]", dataType: "ARRAY", udtName: "_timetz", want: "time with time zone[]"},
+		{name: "array of timestamp -> timestamp without time zone[]", dataType: "ARRAY", udtName: "_timestamp", want: "timestamp without time zone[]"},
+		{name: "array of timestamptz -> timestamp with time zone[]", dataType: "ARRAY", udtName: "_timestamptz", want: "timestamp with time zone[]"},
+		{name: "array of interval -> interval[]", dataType: "ARRAY", udtName: "_interval", want: "interval[]"},
+		{name: "array of uuid -> uuid[]", dataType: "ARRAY", udtName: "_uuid", want: "uuid[]"},
+		{name: "array of json -> json[]", dataType: "ARRAY", udtName: "_json", want: "json[]"},
+		{name: "array of jsonb -> jsonb[]", dataType: "ARRAY", udtName: "_jsonb", want: "jsonb[]"},
+		{name: "array of inet -> inet[]", dataType: "ARRAY", udtName: "_inet", want: "inet[]"},
+		{name: "array of cidr -> cidr[]", dataType: "ARRAY", udtName: "_cidr", want: "cidr[]"},
+		{name: "array of macaddr -> macaddr[]", dataType: "ARRAY", udtName: "_macaddr", want: "macaddr[]"},
+		{name: "array of macaddr8 -> macaddr8[]", dataType: "ARRAY", udtName: "_macaddr8", want: "macaddr8[]"},
+		{name: "array of bit -> bit[]", dataType: "ARRAY", udtName: "_bit", want: "bit[]"},
+		{name: "array of varbit -> bit varying[]", dataType: "ARRAY", udtName: "_varbit", want: "bit varying[]"},
+		{name: "array of money -> money[]", dataType: "ARRAY", udtName: "_money", want: "money[]"},
+		{name: "array of xml -> xml[]", dataType: "ARRAY", udtName: "_xml", want: "xml[]"},
+		{name: "array of tsvector -> tsvector[]", dataType: "ARRAY", udtName: "_tsvector", want: "tsvector[]"},
+		{name: "array of tsquery -> tsquery[]", dataType: "ARRAY", udtName: "_tsquery", want: "tsquery[]"},
+		// ARRAY of USER-DEFINED enum: udt_name=_<enumname>。マップに無いので
+		// `_` だけ剥がして `<enumname>[]` を出す。
+		{name: "array of user defined enum -> mood[]", dataType: "ARRAY", udtName: "_mood", want: "mood[]"},
+		// ARRAY: udt_name 空欄は ARRAY のまま温存（情報損失を可視化する保守的経路）
+		{name: "array with empty udt is preserved", dataType: "ARRAY", udtName: "", want: "ARRAY"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 			if got := resolvePGType(c.dataType, c.udtName); got != c.want {
 				t.Fatalf("resolvePGType(%q,%q) = %q, want %q", c.dataType, c.udtName, got, c.want)
+			}
+		})
+	}
+}
+
+// TestPGArrayElementDisplay は内部 udt 名（`_<elem>`）→ data_type 寄り表示名の
+// 純粋写像を直接検証する。`_` 抜きの未知名はそのまま返るフォールバックを
+// 含めて固定する。
+func TestPGArrayElementDisplay(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		udt  string
+		want string
+	}{
+		{"_int4", "integer"},
+		{"_int8", "bigint"},
+		{"_varchar", "character varying"},
+		{"_timestamptz", "timestamp with time zone"},
+		{"_timestamp", "timestamp without time zone"},
+		{"_text", "text"},
+		// 未知の独自型は `_` のみ剥がして返す（独自 enum の配列など）
+		{"_mood", "mood"},
+		// 既に `_` 無しでも壊さない（堅牢性）
+		{"int4", "integer"},
+	}
+	for _, c := range cases {
+		t.Run(c.udt, func(t *testing.T) {
+			t.Parallel()
+			if got := pgArrayElementDisplay(c.udt); got != c.want {
+				t.Fatalf("pgArrayElementDisplay(%q) = %q, want %q", c.udt, got, c.want)
 			}
 		})
 	}

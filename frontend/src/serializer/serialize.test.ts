@@ -257,6 +257,43 @@ describe('serialize', () => {
     expect(serialize(s)).toBe(want)
   })
 
+  it('escapes ] inside default expression as \\]', () => {
+    // PostgreSQL の配列 default `'{}'::integer[]` のように `]` を含む式を
+    // round-trip させるため、Serialize 時には `]` を `\]` にエスケープする。
+    // パーサ側は `\]` を `]` に unescape して取り込むため、Serialize → Parse
+    // → Serialize の往復が同一テキストになる（要件 7.10）。
+    const s: Schema = {
+      Title: 't',
+      Groups: [],
+      Tables: [
+        {
+          Name: 'arr',
+          LogicalName: '',
+          Columns: [
+            {
+              Name: 'tag_ids',
+              LogicalName: '',
+              Type: 'integer[]',
+              AllowNull: false,
+              IsUnique: false,
+              IsPrimaryKey: false,
+              Default: "'{}'::integer[]",
+              Comments: [],
+              WithoutErd: false,
+              FK: null,
+              IndexRefs: [],
+            },
+          ],
+          PrimaryKeys: [],
+          Indexes: [],
+          Groups: [],
+        },
+      ],
+    }
+    const got = serialize(s)
+    expect(got).toContain("    tag_ids [integer[]][NN][='{}'::integer[\\]]\n")
+  })
+
   it('emits column comments with 5-space + "# " indent', () => {
     const s: Schema = {
       Title: 't',

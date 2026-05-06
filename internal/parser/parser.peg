@@ -41,8 +41,8 @@ real_column_name <- ([a-z] / [A-Z] / [0-9] / '_')+
 column_name <- ( ('"' (![\t\r\n"] .)+ '"') / (![\t\r\n/ ] .)+ )
 relation_point <- [a-zA-Z0-9_.]+
 pkey <- '+' / '*'
-col_type <- ([a-zA-Z0-9_() .,])+
-default <- ((![\r\n\]] .) / '\\]')*
+col_type <- ('[]' / '\\]' / [a-zA-Z0-9_() .,\[])+
+default <- ('\\]' / (![\r\n\]] .))*
 cardinality_right <- cardinality
 cardinality_left <- cardinality
 cardinality <- [01*](..[01*])?

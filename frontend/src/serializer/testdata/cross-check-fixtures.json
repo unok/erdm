@@ -176,6 +176,73 @@
       }
     ]
   },
+  "arrays": {
+    "Title": "arrays",
+    "Groups": [],
+    "Tables": [
+      {
+        "Name": "arr",
+        "LogicalName": "",
+        "Columns": [
+          {
+            "Name": "id",
+            "LogicalName": "",
+            "Type": "uuid",
+            "AllowNull": false,
+            "IsUnique": true,
+            "IsPrimaryKey": true,
+            "Default": "",
+            "Comments": [],
+            "WithoutErd": false,
+            "FK": null,
+            "IndexRefs": []
+          },
+          {
+            "Name": "tags",
+            "LogicalName": "",
+            "Type": "text[]",
+            "AllowNull": false,
+            "IsUnique": false,
+            "IsPrimaryKey": false,
+            "Default": "'{}'::text[]",
+            "Comments": [],
+            "WithoutErd": false,
+            "FK": null,
+            "IndexRefs": []
+          },
+          {
+            "Name": "tag_ids",
+            "LogicalName": "",
+            "Type": "integer[]",
+            "AllowNull": false,
+            "IsUnique": false,
+            "IsPrimaryKey": false,
+            "Default": "'{}'::integer[]",
+            "Comments": [],
+            "WithoutErd": false,
+            "FK": null,
+            "IndexRefs": []
+          },
+          {
+            "Name": "titles",
+            "LogicalName": "",
+            "Type": "character varying[]",
+            "AllowNull": false,
+            "IsUnique": false,
+            "IsPrimaryKey": false,
+            "Default": "",
+            "Comments": [],
+            "WithoutErd": false,
+            "FK": null,
+            "IndexRefs": []
+          }
+        ],
+        "PrimaryKeys": [0],
+        "Indexes": [],
+        "Groups": []
+      }
+    ]
+  },
   "compound-pk": {
     "Title": "compound pk",
     "Groups": [],

@@ -214,6 +214,56 @@ func TestParse_GroupsDuplicateOnSameTableRejected(t *testing.T) {
 	}
 }
 
+// TestParse_ArrayColumnType は `[varchar[]]` `[integer[]]`
+// `[numeric(10,2)[]]` 等の配列型表記が col_type として受理されることを確認する
+// （PostgreSQL `data_type='ARRAY'` 由来の出力を round-trip 可能にするため、
+// `parser.peg` の col_type に `[]` 受理が必要となった）。
+func TestParse_ArrayColumnType(t *testing.T) {
+	src := []byte("# Title: t\n" +
+		"users\n" +
+		"    +id [uuid][NN][U]\n" +
+		"    tags [text[]][NN]\n" +
+		"    tag_ids [integer[]]\n" +
+		"    matrix [numeric(10,2)[]]\n" +
+		"    titles [character varying[]][NN]\n")
+	schema, perr := Parse(src)
+	if perr != nil {
+		t.Fatalf("Parse: %v", perr)
+	}
+	cols := schema.Tables[0].Columns
+	wantTypes := []string{"uuid", "text[]", "integer[]", "numeric(10,2)[]", "character varying[]"}
+	if len(cols) != len(wantTypes) {
+		t.Fatalf("columns=%d want %d", len(cols), len(wantTypes))
+	}
+	for i, want := range wantTypes {
+		if cols[i].Type != want {
+			t.Errorf("Columns[%d].Type=%q want %q", i, cols[i].Type, want)
+		}
+	}
+}
+
+// TestParse_DefaultWithEscapedBracket は `[=...]` の値部分に含まれる `\]`
+// エスケープが `]` として取り込まれることを確認する。serializer 側で
+// `]` → `\]` に escape して書き出した round-trip を成立させるための前提。
+func TestParse_DefaultWithEscapedBracket(t *testing.T) {
+	src := []byte("# Title: t\n" +
+		"defaults_demo\n" +
+		"    +id [uuid][NN]\n" +
+		"    tag_ids [integer[]][NN][='{}'::integer[\\]]\n" +
+		"    aliases [text[]][NN][='{a,b\\]'::text[\\]]\n")
+	schema, perr := Parse(src)
+	if perr != nil {
+		t.Fatalf("Parse: %v\nsrc=\n%s", perr, src)
+	}
+	cols := schema.Tables[0].Columns
+	if got := cols[1].Default; got != "'{}'::integer[]" {
+		t.Errorf("tag_ids.Default=%q want '{}'::integer[]", got)
+	}
+	if got := cols[2].Default; got != "'{a,b]'::text[]" {
+		t.Errorf("aliases.Default=%q want '{a,b]'::text[]", got)
+	}
+}
+
 // TestParse_TitleCaptured は `# Title:` 行がスキーマタイトルに反映されることを確認する。
 func TestParse_TitleCaptured(t *testing.T) {
 	src := []byte("# Title: example\n" +

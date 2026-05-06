@@ -179,6 +179,98 @@ func TestIntegration_Postgres_RoundtripAndExpected(t *testing.T) {
 	}
 }
 
+// TestIntegration_Postgres_ArrayTypes は配列カラムと、値に `]` を含む default
+// 式（`'{}'::integer[]` 等）が end-to-end で正しく取り込まれ、Introspect →
+// Serialize → Parse → 再 Serialize の往復で同一テキストになることを検証する。
+//
+// 検証点:
+//   - resolvePGType の ARRAY 経路（udt_name `_int4` → `integer[]` 等の写像）
+//   - parser.peg の col_type 拡張（`[varchar[]]` 等の受理）
+//   - parser builder の `\]` → `]` unescape と serializer 側の `]` → `\]` escape
+//
+// `ERDM_TEST_POSTGRES_DSN` 未設定時は自動スキップ。
+func TestIntegration_Postgres_ArrayTypes(t *testing.T) {
+	dsn := os.Getenv("ERDM_TEST_POSTGRES_DSN")
+	if dsn == "" {
+		t.Skip("ERDM_TEST_POSTGRES_DSN not set; skipping PostgreSQL integration test")
+	}
+	const ddl = `
+DROP TABLE IF EXISTS i_pg_arr CASCADE;
+CREATE TABLE i_pg_arr (
+    id bigserial PRIMARY KEY,
+    tags text[] NOT NULL DEFAULT '{}'::text[],
+    tag_ids integer[] NOT NULL DEFAULT '{}'::integer[],
+    titles character varying[] NOT NULL,
+    matrix numeric(10,2)[]
+);
+COMMENT ON TABLE  i_pg_arr        IS '配列型カラム';
+`
+	loadPGFixture(t, dsn, ddl)
+	ctx := context.Background()
+	schema, err := Introspect(ctx, Options{Driver: DriverPostgreSQL, DSN: dsn, Title: "integration_pg_arr"})
+	if err != nil {
+		t.Fatalf("Introspect: %v", err)
+	}
+	if err := schema.Validate(); err != nil {
+		t.Fatalf("Validate: %v", err)
+	}
+	got, err := serializer.Serialize(schema)
+	if err != nil {
+		t.Fatalf("Serialize: %v", err)
+	}
+	gotText := filterFixtureTables(string(got), []string{"i_pg_arr"}, "integration_pg_arr")
+	wantSubstrings := []string{
+		"tags/tags [text[]][NN][='{}'::text[\\]]",
+		"tag_ids/tag_ids [integer[]][NN][='{}'::integer[\\]]",
+		"titles/titles [character varying[]][NN]",
+		// numeric(p,s)[] は data_type='ARRAY' / udt_name='_numeric' で取得される。
+		// PG は precision/scale を data_type に含めず別カラムへ載せるため、現状の
+		// 実装では `numeric[]` で出力される（precision 復元は本 PR スコープ外）。
+		"matrix/matrix [numeric[]]",
+	}
+	for _, s := range wantSubstrings {
+		if !strings.Contains(gotText, s) {
+			t.Errorf("missing substring %q in:\n%s", s, gotText)
+		}
+	}
+	// 再パース→再シリアライズの不動点性。
+	parsed, perr := parser.Parse([]byte(gotText))
+	if perr != nil {
+		t.Fatalf("re-parse: %v\n%s", perr, gotText)
+	}
+	if err := parsed.Validate(); err != nil {
+		t.Fatalf("re-parse validate: %v", err)
+	}
+	got2, err := serializer.Serialize(parsed)
+	if err != nil {
+		t.Fatalf("re-serialize: %v", err)
+	}
+	got2Text := filterFixtureTables(string(got2), []string{"i_pg_arr"}, "integration_pg_arr")
+	if got2Text != gotText {
+		t.Fatalf("not byte-identical:\n--- got2 ---\n%s\n--- got ---\n%s", got2Text, gotText)
+	}
+	// model 側の意味値検証: default は `]` を含む（escape 解除済）状態で保持される。
+	var arrTbl *struct{ Default string }
+	for _, tbl := range parsed.Tables {
+		if tbl.Name != "i_pg_arr" {
+			continue
+		}
+		for _, c := range tbl.Columns {
+			if c.Name == "tags" {
+				if c.Default != "'{}'::text[]" {
+					t.Errorf("tags.Default=%q want '{}'::text[]", c.Default)
+				}
+			}
+			if c.Name == "tag_ids" {
+				if c.Default != "'{}'::integer[]" {
+					t.Errorf("tag_ids.Default=%q want '{}'::integer[]", c.Default)
+				}
+			}
+		}
+	}
+	_ = arrTbl
+}
+
 // TestIntegration_Postgres_ReadOnly は Introspect の前後で対象テーブルの行件数が
 // 変化しないことを確認する（要件 10.1 / 10.2）。
 func TestIntegration_Postgres_ReadOnly(t *testing.T) {

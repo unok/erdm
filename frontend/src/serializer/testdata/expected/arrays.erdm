@@ -1,0 +1,7 @@
+# Title: arrays
+
+arr
+    +id [uuid][NN][U]
+    tags [text[]][NN][='{}'::text[\]]
+    tag_ids [integer[]][NN][='{}'::integer[\]]
+    titles [character varying[]][NN]

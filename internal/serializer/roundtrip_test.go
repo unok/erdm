@@ -94,6 +94,37 @@ func TestRoundTrip_AllFlagsAndComments(t *testing.T) {
 	assertFixedPointAndSemanticIdentity(t, schema0)
 }
 
+// TestRoundTrip_ArrayTypeAndEscapedDefault は配列型カラムと、`]` を含む
+// default 式（PostgreSQL の `'{}'::integer[]` 等）が往復で保持されることを
+// 確認する。Parse 側は `\]` を `]` に unescape し、Serialize 側は対称に
+// `]` を `\]` に escape することで、テキスト不動点性とモデル意味的同一性の
+// 双方が成立する（要件 7.10）。
+func TestRoundTrip_ArrayTypeAndEscapedDefault(t *testing.T) {
+	src := []byte("# Title: t\n" +
+		"\n" +
+		"arrays_demo\n" +
+		"    +id [uuid][NN][U]\n" +
+		"    tags [text[]][NN][='{}'::text[\\]]\n" +
+		"    tag_ids [integer[]][NN][='{}'::integer[\\]]\n" +
+		"    titles [character varying[]][NN]\n")
+	schema0, perr := parser.Parse(src)
+	if perr != nil {
+		t.Fatalf("parse: %v", perr)
+	}
+	// model 側は escape を持たない意味値
+	cols := schema0.Tables[0].Columns
+	if got := cols[1].Default; got != "'{}'::text[]" {
+		t.Errorf("tags.Default=%q want '{}'::text[]", got)
+	}
+	if got := cols[2].Default; got != "'{}'::integer[]" {
+		t.Errorf("tag_ids.Default=%q want '{}'::integer[]", got)
+	}
+	if got := cols[1].Type; got != "text[]" {
+		t.Errorf("tags.Type=%q want text[]", got)
+	}
+	assertFixedPointAndSemanticIdentity(t, schema0)
+}
+
 // TestRoundTrip_CompoundPrimaryKey は複合主キーが往復後も保持されることを確認する。
 // 旧パーサ仕様（`+`/`*` の登場順を 0/1 で記録）と整合させ、PrimaryKeys=[0,1] と
 // Column.IsPrimaryKey の両方が保たれる。

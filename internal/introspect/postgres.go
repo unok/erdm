@@ -160,14 +160,77 @@ func normalizePGSerial(dataType, columnDefault string) (string, string) {
 	return dataType, columnDefault
 }
 
-// resolvePGType は PostgreSQL の `data_type` が `USER-DEFINED`（enum など）の
-// ときに `udt_name` を表示名としてフォールバックする純粋関数。
-// それ以外の場合は dataType をそのまま返す。
+// resolvePGType は PostgreSQL の `data_type` を `.erdm` の col_type 表記に
+// 解決する純粋関数。
+//
+// 解決規則（PostgreSQL `information_schema.columns` の仕様準拠）:
+//
+//   - `data_type='USER-DEFINED'` の場合は `udt_name` をそのまま返す（enum 等）。
+//     udt_name が空のときは `USER-DEFINED` を維持する（フォールバック先がない）。
+//   - `data_type='ARRAY'` の場合は `udt_name`（`_int4` / `_varchar` 等の内部名）を
+//     `pgArrayElementDisplay` で SQL 標準寄りの表示名に正規化し、末尾に `[]`
+//     を付与して返す（例: `_int4` → `integer[]`、`_varchar` → `character varying[]`、
+//     `_timestamp` → `timestamp without time zone[]`）。udt_name が空のときは
+//     失われる情報を残すため `ARRAY` を返す（壊れた既存挙動の保持）。
+//   - 上記以外は `data_type` をそのまま返す（PG は `integer` / `boolean` /
+//     `character varying` 等を SQL 標準名で返すため、追加マップは不要）。
 func resolvePGType(dataType, udtName string) string {
-	if dataType == "USER-DEFINED" && udtName != "" {
+	switch dataType {
+	case "USER-DEFINED":
+		if udtName == "" {
+			return dataType
+		}
 		return udtName
+	case "ARRAY":
+		if udtName == "" {
+			return dataType
+		}
+		return pgArrayElementDisplay(udtName) + "[]"
+	default:
+		return dataType
 	}
-	return dataType
+}
+
+// pgArrayElementDisplay は配列カラムの `udt_name`（PG 内部名、先頭 `_` 付き）を
+// `data_type` 寄りの SQL 表示名に変換する純粋関数。
+//
+// 変換は以下の段階で行う:
+//  1. 先頭の `_` を 1 文字だけ取り除く（PG は配列型を `_<element>` で命名する）
+//  2. 既知の内部名は `data_type` 寄りの表示名へ写像する
+//  3. 未知の内部名（独自 enum など）はそのまま返す
+//
+// 既知マップは PostgreSQL の基本ビルトイン型（数値・文字列・日時・boolean・
+// バイナリ・json/jsonb・uuid・ネットワーク・bit・xml・money・tsvector/tsquery）
+// を網羅する。これに含まれない型は `_<name>` の `_` のみ取り除いた素の名前で
+// 出力する（例: ユーザー定義 enum の配列 `_mood` → `mood`）。
+func pgArrayElementDisplay(udtName string) string {
+	stripped := strings.TrimPrefix(udtName, "_")
+	if mapped, ok := pgInternalToDisplay[stripped]; ok {
+		return mapped
+	}
+	return stripped
+}
+
+// pgInternalToDisplay は PG 内部型名（`udt_name` の `_` 抜き）から
+// `data_type` 寄りの表示名への写像。`information_schema.columns.data_type` が
+// 配列でない型に対して返す表記と整合させる（要件 4.x）。
+//
+// ここに無いキーは（独自 enum 等とみなして）そのまま返す方針。テスト網羅は
+// `postgres_test.go` の TestPGArrayElementDisplay / TestResolvePGType にある。
+var pgInternalToDisplay = map[string]string{
+	"int2":        "smallint",
+	"int4":        "integer",
+	"int8":        "bigint",
+	"float4":      "real",
+	"float8":      "double precision",
+	"bool":        "boolean",
+	"varchar":     "character varying",
+	"bpchar":      "character",
+	"timetz":      "time with time zone",
+	"timestamptz": "timestamp with time zone",
+	"timestamp":   "timestamp without time zone",
+	"time":        "time without time zone",
+	"varbit":      "bit varying",
 }
 
 // markColumnUnique は対象カラムが見つかれば IsUnique=true を立てる純粋関数。
