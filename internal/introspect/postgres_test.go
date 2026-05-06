@@ -106,10 +106,15 @@ func TestResolvePGType(t *testing.T) {
 		// USER-DEFINED
 		{name: "user defined falls back to udt", dataType: "USER-DEFINED", udtName: "mood", want: "mood"},
 		{name: "user defined with empty udt is preserved", dataType: "USER-DEFINED", udtName: "", want: "USER-DEFINED"},
-		// 非配列・非ユーザ定義は data_type をそのまま採用
+		// 非配列・非ユーザ定義: 短縮対象外は data_type そのまま
 		{name: "integer is preserved", dataType: "integer", udtName: "int4", want: "integer"},
 		{name: "text is preserved", dataType: "text", udtName: "text", want: "text"},
-		{name: "character varying is preserved", dataType: "character varying", udtName: "varchar", want: "character varying"},
+		// 非配列・短縮対象（character varying / timestamp / time）
+		{name: "character varying -> varchar", dataType: "character varying", udtName: "varchar", want: "varchar"},
+		{name: "timestamp without time zone -> timestamp", dataType: "timestamp without time zone", udtName: "timestamp", want: "timestamp"},
+		{name: "timestamp with time zone -> timestamptz", dataType: "timestamp with time zone", udtName: "timestamptz", want: "timestamptz"},
+		{name: "time without time zone -> time", dataType: "time without time zone", udtName: "time", want: "time"},
+		{name: "time with time zone -> timetz", dataType: "time with time zone", udtName: "timetz", want: "timetz"},
 		// ARRAY: 主要ビルトイン型
 		{name: "array of int4 -> integer[]", dataType: "ARRAY", udtName: "_int4", want: "integer[]"},
 		{name: "array of int8 -> bigint[]", dataType: "ARRAY", udtName: "_int8", want: "bigint[]"},
@@ -118,15 +123,15 @@ func TestResolvePGType(t *testing.T) {
 		{name: "array of float8 -> double precision[]", dataType: "ARRAY", udtName: "_float8", want: "double precision[]"},
 		{name: "array of numeric -> numeric[]", dataType: "ARRAY", udtName: "_numeric", want: "numeric[]"},
 		{name: "array of bool -> boolean[]", dataType: "ARRAY", udtName: "_bool", want: "boolean[]"},
-		{name: "array of varchar -> character varying[]", dataType: "ARRAY", udtName: "_varchar", want: "character varying[]"},
+		{name: "array of varchar -> varchar[]", dataType: "ARRAY", udtName: "_varchar", want: "varchar[]"},
 		{name: "array of bpchar -> character[]", dataType: "ARRAY", udtName: "_bpchar", want: "character[]"},
 		{name: "array of text -> text[]", dataType: "ARRAY", udtName: "_text", want: "text[]"},
 		{name: "array of bytea -> bytea[]", dataType: "ARRAY", udtName: "_bytea", want: "bytea[]"},
 		{name: "array of date -> date[]", dataType: "ARRAY", udtName: "_date", want: "date[]"},
-		{name: "array of time -> time without time zone[]", dataType: "ARRAY", udtName: "_time", want: "time without time zone[]"},
-		{name: "array of timetz -> time with time zone[]", dataType: "ARRAY", udtName: "_timetz", want: "time with time zone[]"},
-		{name: "array of timestamp -> timestamp without time zone[]", dataType: "ARRAY", udtName: "_timestamp", want: "timestamp without time zone[]"},
-		{name: "array of timestamptz -> timestamp with time zone[]", dataType: "ARRAY", udtName: "_timestamptz", want: "timestamp with time zone[]"},
+		{name: "array of time -> time[]", dataType: "ARRAY", udtName: "_time", want: "time[]"},
+		{name: "array of timetz -> timetz[]", dataType: "ARRAY", udtName: "_timetz", want: "timetz[]"},
+		{name: "array of timestamp -> timestamp[]", dataType: "ARRAY", udtName: "_timestamp", want: "timestamp[]"},
+		{name: "array of timestamptz -> timestamptz[]", dataType: "ARRAY", udtName: "_timestamptz", want: "timestamptz[]"},
 		{name: "array of interval -> interval[]", dataType: "ARRAY", udtName: "_interval", want: "interval[]"},
 		{name: "array of uuid -> uuid[]", dataType: "ARRAY", udtName: "_uuid", want: "uuid[]"},
 		{name: "array of json -> json[]", dataType: "ARRAY", udtName: "_json", want: "json[]"},
@@ -168,9 +173,11 @@ func TestPGArrayElementDisplay(t *testing.T) {
 	}{
 		{"_int4", "integer"},
 		{"_int8", "bigint"},
-		{"_varchar", "character varying"},
-		{"_timestamptz", "timestamp with time zone"},
-		{"_timestamp", "timestamp without time zone"},
+		{"_varchar", "varchar"},
+		{"_timestamptz", "timestamptz"},
+		{"_timestamp", "timestamp"},
+		{"_timetz", "timetz"},
+		{"_time", "time"},
 		{"_text", "text"},
 		// 未知の独自型は `_` のみ剥がして返す（独自 enum の配列など）
 		{"_mood", "mood"},

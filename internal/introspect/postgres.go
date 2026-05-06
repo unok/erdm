@@ -168,12 +168,14 @@ func normalizePGSerial(dataType, columnDefault string) (string, string) {
 //   - `data_type='USER-DEFINED'` の場合は `udt_name` をそのまま返す（enum 等）。
 //     udt_name が空のときは `USER-DEFINED` を維持する（フォールバック先がない）。
 //   - `data_type='ARRAY'` の場合は `udt_name`（`_int4` / `_varchar` 等の内部名）を
-//     `pgArrayElementDisplay` で SQL 標準寄りの表示名に正規化し、末尾に `[]`
-//     を付与して返す（例: `_int4` → `integer[]`、`_varchar` → `character varying[]`、
-//     `_timestamp` → `timestamp without time zone[]`）。udt_name が空のときは
+//     `pgArrayElementDisplay` で短縮表示名に正規化し、末尾に `[]` を付与して返す
+//     （例: `_int4` → `integer[]`、`_varchar` → `varchar[]`、`_timestamp` →
+//     `timestamp[]`、`_timestamptz` → `timestamptz[]`）。udt_name が空のときは
 //     失われる情報を残すため `ARRAY` を返す（壊れた既存挙動の保持）。
-//   - 上記以外は `data_type` をそのまま返す（PG は `integer` / `boolean` /
-//     `character varying` 等を SQL 標準名で返すため、追加マップは不要）。
+//   - 上記以外は `data_type` を `pgDataTypeShortName` で短縮表示名へ正規化して
+//     返す（`character varying` → `varchar`、`timestamp without time zone` →
+//     `timestamp`、`timestamp with time zone` → `timestamptz` 等）。短縮対象に
+//     ない型は data_type をそのまま返す。
 func resolvePGType(dataType, udtName string) string {
 	switch dataType {
 	case "USER-DEFINED":
@@ -187,8 +189,39 @@ func resolvePGType(dataType, udtName string) string {
 		}
 		return pgArrayElementDisplay(udtName) + "[]"
 	default:
-		return dataType
+		return pgDataTypeShortName(dataType)
 	}
+}
+
+// pgDataTypeShortName は PostgreSQL の `information_schema.columns.data_type`
+// が返す冗長な SQL 標準名を、erdm 慣用の短縮表記へ正規化する純粋関数。
+//
+// 写像対象（要件: `.erdm` の可読性向上）:
+//   - `character varying`        → `varchar`
+//   - `character`                → `character`（短縮しない。`char` は予約語混乱を避ける）
+//   - `timestamp without time zone` → `timestamp`
+//   - `timestamp with time zone`    → `timestamptz`
+//   - `time without time zone`      → `time`
+//   - `time with time zone`         → `timetz`
+//   - `bit varying`              → `bit varying`（短縮しない）
+//
+// 短縮対象に無い型はそのまま返す（既存出力との後方互換）。
+func pgDataTypeShortName(dataType string) string {
+	if mapped, ok := pgDataTypeAliases[dataType]; ok {
+		return mapped
+	}
+	return dataType
+}
+
+// pgDataTypeAliases は data_type 文字列の冗長表記を短縮表記へ写す表。
+// 配列要素側（pgInternalToDisplay）と語尾の整合を取るため、両表は同じ
+// 短縮ルール（`varchar` / `timestamp` / `timestamptz` / `time` / `timetz`）を採用する。
+var pgDataTypeAliases = map[string]string{
+	"character varying":           "varchar",
+	"timestamp without time zone": "timestamp",
+	"timestamp with time zone":    "timestamptz",
+	"time without time zone":      "time",
+	"time with time zone":         "timetz",
 }
 
 // pgArrayElementDisplay は配列カラムの `udt_name`（PG 内部名、先頭 `_` 付き）を
@@ -212,8 +245,9 @@ func pgArrayElementDisplay(udtName string) string {
 }
 
 // pgInternalToDisplay は PG 内部型名（`udt_name` の `_` 抜き）から
-// `data_type` 寄りの表示名への写像。`information_schema.columns.data_type` が
-// 配列でない型に対して返す表記と整合させる（要件 4.x）。
+// 表示名への写像。erdm 慣用の短縮表記（`varchar` / `timestamp` /
+// `timestamptz` / `time` / `timetz`）に揃え、非配列側の `pgDataTypeShortName`
+// と語尾を一致させる。
 //
 // ここに無いキーは（独自 enum 等とみなして）そのまま返す方針。テスト網羅は
 // `postgres_test.go` の TestPGArrayElementDisplay / TestResolvePGType にある。
@@ -224,12 +258,12 @@ var pgInternalToDisplay = map[string]string{
 	"float4":      "real",
 	"float8":      "double precision",
 	"bool":        "boolean",
-	"varchar":     "character varying",
+	"varchar":     "varchar",
 	"bpchar":      "character",
-	"timetz":      "time with time zone",
-	"timestamptz": "timestamp with time zone",
-	"timestamp":   "timestamp without time zone",
-	"time":        "time without time zone",
+	"timetz":      "timetz",
+	"timestamptz": "timestamptz",
+	"timestamp":   "timestamp",
+	"time":        "time",
 	"varbit":      "bit varying",
 }
 

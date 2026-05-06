@@ -222,7 +222,7 @@ COMMENT ON TABLE  i_pg_arr        IS '配列型カラム';
 	wantSubstrings := []string{
 		"tags/tags [text[]][NN][='{}'::text[\\]]",
 		"tag_ids/tag_ids [integer[]][NN][='{}'::integer[\\]]",
-		"titles/titles [character varying[]][NN]",
+		"titles/titles [varchar[]][NN]",
 		// numeric(p,s)[] は data_type='ARRAY' / udt_name='_numeric' で取得される。
 		// PG は precision/scale を data_type に含めず別カラムへ載せるため、現状の
 		// 実装では `numeric[]` で出力される（precision 復元は本 PR スコープ外）。
