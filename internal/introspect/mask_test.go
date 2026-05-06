@@ -45,17 +45,37 @@ func TestMaskDSN(t *testing.T) {
 			dsn:    "mysql://user:secret@host:3306/db",
 			want:   "",
 		},
+		// SQLite はディレクトリ構成を露出させないため、basename のみを残す
+		// （PR #24 レビュー指摘 / 要件 10.4）。
 		{
-			name:   "sqlite file path is returned as-is",
+			name:   "sqlite file path is masked to basename",
 			driver: DriverSQLite,
 			dsn:    "./var/shop.db",
-			want:   "./var/shop.db",
+			want:   "shop.db",
 		},
 		{
-			name:   "sqlite file URI is returned as-is",
+			name:   "sqlite absolute path is masked to basename",
+			driver: DriverSQLite,
+			dsn:    "/srv/data/inventory.sqlite3",
+			want:   "inventory.sqlite3",
+		},
+		{
+			name:   "sqlite file URI drops directory and query",
 			driver: DriverSQLite,
 			dsn:    "file:./var/shop.db?cache=shared",
-			want:   "file:./var/shop.db?cache=shared",
+			want:   "file:shop.db",
+		},
+		{
+			name:   "sqlite absolute file URI is masked to file:<basename>",
+			driver: DriverSQLite,
+			dsn:    "file:///abs/path/shop.db",
+			want:   "file:shop.db",
+		},
+		{
+			name:   "sqlite :memory: is preserved (no path leak)",
+			driver: DriverSQLite,
+			dsn:    ":memory:",
+			want:   ":memory:",
 		},
 		{
 			name:   "unknown driver yields empty string for safety",

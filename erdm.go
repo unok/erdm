@@ -53,7 +53,7 @@ var spaDistFS embed.FS
 // `[render]` ではなく旧形式の表記を維持し、後方互換を読み手に明示する。
 const usageRender = "Usage: erdm [-output_dir DIR] [--format=dot|elk] schema.erdm"
 const usageServe = "Usage: erdm serve [--port=N] [--listen=ADDR] [--no-write] schema.erdm"
-const usageImport = "usage: erdm import --driver=postgres|mysql|sqlite --dsn=<DSN> [--out=PATH]"
+const usageImport = "usage: erdm import --dsn=<DSN> [--driver=postgres|mysql|sqlite] [--out=PATH] [--title=NAME] [--schema=NAME]"
 
 func main() {
 	args := os.Args[1:]
@@ -330,6 +330,11 @@ func runImport(args []string) error {
 // writeImportOutput は --out の値に応じて出力経路を切り替える（要件 1.3 / 1.4 /
 // 11.4）。--out が空なら標準出力、指定があれば親ディレクトリ存在検査の上で
 // ファイル書き出しする。
+//
+// 親ディレクトリの Stat 失敗は「不在」と「不在以外（権限不足等）」を区別して
+// 報告する。前者は既存契約どおり `output directory not found:` メッセージで
+// 利用者へ「親 dir を作る／パスを直す」誘導を出し、後者は原因エラーを
+// `%w` でラップして診断性を担保する（PR #24 レビュー指摘）。
 func writeImportOutput(outPath string, content []byte) error {
 	if outPath == "" {
 		if _, err := os.Stdout.Write(content); err != nil {
@@ -339,8 +344,14 @@ func writeImportOutput(outPath string, content []byte) error {
 	}
 	parent := filepath.Dir(outPath)
 	st, err := os.Stat(parent)
-	if err != nil || !st.IsDir() {
-		return fmt.Errorf("output directory not found: %s", parent)
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return fmt.Errorf("output directory not found: %s", parent)
+		}
+		return fmt.Errorf("import: stat %s: %w", parent, err)
+	}
+	if !st.IsDir() {
+		return fmt.Errorf("import: %s is not a directory", parent)
 	}
 	if err := os.WriteFile(outPath, content, 0644); err != nil {
 		return fmt.Errorf("import: write %s: %w", outPath, err)

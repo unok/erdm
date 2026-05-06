@@ -39,12 +39,18 @@ var sqliteFileExtensions = []string{".db", ".sqlite", ".sqlite3"}
 // 採用ルール（design.md §"要件トレーサビリティ" 1.5 / 2.4）:
 //  1. override が空でなく既知の Driver と一致する → そのまま採用
 //  2. override が空でなく既知の Driver と一致しない → errUnsupportedDriver
-//  3. override が空 → DSN の URL スキームまたはファイル拡張子から推定
+//  3. override が空 → DSN の URL スキーム → ファイル拡張子 → MySQL 標準 DSN
+//     形式の順に推定
 //  4. 推定できない → errDriverInferenceFailed
 //
 // MySQL の URL 形式（mysql://...）は推定段階で MySQL として識別するが、
 // 接続段階では `parseMySQLDSN` が `errMySQLURLSchemeNotSupported` を返して
 // 利用者へ標準 DSN への置換を促す（タスク 3.2 採用方針）。
+//
+// MySQL 標準 DSN（`user:pass@tcp(...)/db` など）は URL スキームを持たず、
+// SQLite ファイル拡張子にも該当しないため、最終段で `detectFromMySQLDSN` が
+// `@` または `(...)` を含む構造を MySQL 標準 DSN として識別する。これにより
+// `--driver` 省略時でも標準 DSN から自動判定が成立する（PR #24 レビュー指摘）。
 func detectDriver(dsn string, override string) (Driver, error) {
 	if override != "" {
 		return detectFromOverride(override)
@@ -53,6 +59,9 @@ func detectDriver(dsn string, override string) (Driver, error) {
 		return d, nil
 	}
 	if d := detectFromExtension(dsn); d != DriverUnknown {
+		return d, nil
+	}
+	if d := detectFromMySQLDSN(dsn); d != DriverUnknown {
 		return d, nil
 	}
 	return DriverUnknown, fmt.Errorf("%w", errDriverInferenceFailed)
@@ -98,4 +107,24 @@ func detectFromExtension(dsn string) Driver {
 		}
 	}
 	return DriverUnknown
+}
+
+// detectFromMySQLDSN は URL スキーム／ファイル拡張子いずれにも該当しない
+// DSN を最終段で MySQL 標準 DSN（`[user[:password]@][protocol[(address)]]/dbname`）
+// として識別する。
+//
+// `@`（ユーザ情報区切り）または `(...)`（protocol(address) ブロック）の存在を
+// 必須条件として課すことで、`/var/data/database` のような単なる絶対パスや
+// `localhost/db` のようなプロトコル不明 DSN を MySQL と誤検出しないようにする。
+// この 2 シグネチャいずれかを含む DSN だけが go-sql-driver/mysql の `ParseDSN`
+// を実行し、パース成功した場合のみ MySQL として採用する。
+func detectFromMySQLDSN(dsn string) Driver {
+	if !strings.ContainsRune(dsn, '@') &&
+		!(strings.ContainsRune(dsn, '(') && strings.ContainsRune(dsn, ')')) {
+		return DriverUnknown
+	}
+	if _, err := parseMySQLDSN(dsn); err != nil {
+		return DriverUnknown
+	}
+	return DriverMySQL
 }

@@ -1,6 +1,7 @@
 package introspect
 
 import (
+	"path/filepath"
 	"strings"
 )
 
@@ -21,7 +22,9 @@ const maskedPasswordPlaceholder = "***"
 //     mysql:// URL 表記は `parseMySQLDSN` が `errMySQLURLSchemeNotSupported`
 //     を返すので、本関数では空文字列を返し、呼び出し側でエラー文言を
 //     生成させる（タスク 3.2 採用方針）。
-//   - SQLite: パスワード概念を持たないファイルパス／file: URL を返す。
+//   - SQLite: パスワード概念は持たないが、ファイルシステムレイアウトの
+//     露出を避けるためディレクトリ部を落とし、ファイル名のみ（`file:` URI の
+//     場合は `file:<basename>`）を返す（PR #24 レビュー指摘 / 要件 10.4）。
 //
 // 戻り値はエラーメッセージにそのまま埋め込める安全な文字列。原 DSN を
 // 露出させないためのバリアであり、呼び出し側は原 DSN を直接ログ／エラーへ
@@ -33,7 +36,7 @@ func maskDSN(driver Driver, dsn string) string {
 	case DriverMySQL:
 		return maskMySQLDSN(dsn)
 	case DriverSQLite:
-		return dsn
+		return maskSQLiteDSN(dsn)
 	default:
 		// 未指定ドライバへ原 DSN をそのまま漏らさない。空文字列で安全側に倒す。
 		return ""
@@ -82,4 +85,36 @@ func maskMySQLDSN(dsn string) string {
 	}
 	cfg.Passwd = maskedPasswordPlaceholder
 	return cfg.FormatDSN()
+}
+
+// maskSQLiteDSN は SQLite の DSN をエラーメッセージへ埋め込む際、ファイル
+// システムレイアウト（ディレクトリ構成）が露出しないようファイル名のみを
+// 残した安全表現を返す（要件 10.4 / PR #24 レビュー指摘）。
+//
+// 振る舞い:
+//   - 空 DSN → 空文字列（呼び出し側で usage 分岐させるため）。
+//   - パース不能な `file:` URI → 空文字列（原 DSN を漏らさないため）。
+//   - `file:` URI（`file:./var/shop.db?cache=shared` など）→ `file:<basename>`
+//     にクエリ・ディレクトリを落とした表現を返す。
+//   - プレーンファイルパス（`./var/shop.db` 等）→ `<basename>` のみを返す。
+//   - basename 抽出が `.`・`/`・空文字列に縮退した場合は空文字列で安全側に倒す。
+//
+// `:memory:` のような擬似 DSN は basename も `:memory:` のままなので、診断性を
+// 損なわず情報を漏らさない。
+func maskSQLiteDSN(dsn string) string {
+	if dsn == "" {
+		return ""
+	}
+	path, err := parseSQLiteDSN(dsn)
+	if err != nil || path == "" {
+		return ""
+	}
+	base := filepath.Base(path)
+	if base == "" || base == "." || base == "/" {
+		return ""
+	}
+	if hasSQLiteFileURIPrefix(dsn) {
+		return "file:" + base
+	}
+	return base
 }

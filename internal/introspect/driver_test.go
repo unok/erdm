@@ -78,10 +78,24 @@ func TestDetectDriver(t *testing.T) {
 			dsn:  "shop.sqlite3",
 			want: DriverSQLite,
 		},
+		// MySQL 標準 DSN（`user:pass@tcp(...)/db`）は URL スキームも SQLite
+		// ファイル拡張子も持たないため、最終段の MySQL 形式判定で識別される
+		// （PR #24 レビュー指摘の修正）。`--driver` 省略時でも標準 DSN から
+		// 自動判定できる契約を本ケースで担保する。
 		{
-			name:    "unknown DSN yields errDriverInferenceFailed",
-			dsn:     "user:pass@tcp(127.0.0.1:3306)/shop",
-			wantErr: errDriverInferenceFailed,
+			name: "MySQL standard DSN with user@tcp() infers MySQL",
+			dsn:  "user:pass@tcp(127.0.0.1:3306)/shop",
+			want: DriverMySQL,
+		},
+		{
+			name: "MySQL standard DSN without password infers MySQL",
+			dsn:  "user@tcp(127.0.0.1:3306)/shop",
+			want: DriverMySQL,
+		},
+		{
+			name: "MySQL standard DSN with query params infers MySQL",
+			dsn:  "user:pass@tcp(127.0.0.1:3306)/shop?parseTime=true",
+			want: DriverMySQL,
 		},
 		// --- 以下、タスク 9.1 で追加した網羅ケース ---
 		// 大文字小文字混在のプレフィックス（要件 1.5）。

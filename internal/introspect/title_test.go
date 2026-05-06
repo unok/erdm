@@ -203,7 +203,10 @@ func TestResolveTitle_SharesDSNParsingWithMaskDSN(t *testing.T) {
 			wantMaskedSubstr: "/inventory",
 		},
 		{
-			name:             "sqlite DSN: title strips extension while masked retains full path",
+			// SQLite mask は basename のみを残す（ディレクトリ漏洩防止）。
+			// title 側は basename からさらに拡張子を取り除いた値を採用する。
+			// 両者が同じ basename `inventory.db` を経由していることを担保する。
+			name:             "sqlite DSN: title strips extension while masked keeps basename",
 			driver:           DriverSQLite,
 			dsn:              "/var/db/inventory.db",
 			wantTitle:        "inventory",
