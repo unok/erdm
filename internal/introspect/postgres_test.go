@@ -1,10 +1,14 @@
 package introspect
 
 import (
+	"database/sql"
 	"reflect"
 	"strings"
 	"testing"
 )
+
+// nullInt は sql.NullInt64 を簡潔に作るヘルパ。テストの可読性向上目的。
+func nullInt(v int64) sql.NullInt64 { return sql.NullInt64{Int64: v, Valid: true} }
 
 // newPostgresIntrospector はスキーマ未指定時に既定 "public" を採用する
 // （要件 3.4）。スケルトン段階でも観測可能な不変条件のため、ここで固定する。
@@ -157,6 +161,63 @@ func TestResolvePGType(t *testing.T) {
 			t.Parallel()
 			if got := resolvePGType(c.dataType, c.udtName); got != c.want {
 				t.Fatalf("resolvePGType(%q,%q) = %q, want %q", c.dataType, c.udtName, got, c.want)
+			}
+		})
+	}
+}
+
+// TestApplyPGTypeModifier は型表記に対する精度／スケール／長さ修飾子の付与を
+// 表駆動で固定する（`varchar(N)` / `numeric(p,s)` / `timestamp(N)` 等）。
+// 配列型（末尾 `[]`）は基底型に修飾子を付けて `[]` を再付与する。
+func TestApplyPGTypeModifier(t *testing.T) {
+	t.Parallel()
+	none := sql.NullInt64{}
+	cases := []struct {
+		name    string
+		typ     string
+		charLen sql.NullInt64
+		numP    sql.NullInt64
+		numS    sql.NullInt64
+		dtP     sql.NullInt64
+		want    string
+	}{
+		// varchar / character: 長さがあれば常に付与
+		{name: "varchar(128)", typ: "varchar", charLen: nullInt(128), want: "varchar(128)"},
+		{name: "varchar without length stays varchar", typ: "varchar", want: "varchar"},
+		{name: "character(8)", typ: "character", charLen: nullInt(8), want: "character(8)"},
+		// numeric / decimal: precision があれば常に付与（scale は NULL を 0 扱い）
+		{name: "numeric(10,2)", typ: "numeric", numP: nullInt(10), numS: nullInt(2), want: "numeric(10,2)"},
+		{name: "numeric(10) -> numeric(10,0)", typ: "numeric", numP: nullInt(10), numS: nullInt(0), want: "numeric(10,0)"},
+		{name: "numeric(10) with NULL scale", typ: "numeric", numP: nullInt(10), want: "numeric(10,0)"},
+		{name: "numeric without precision stays numeric", typ: "numeric", want: "numeric"},
+		{name: "decimal(20,5)", typ: "decimal", numP: nullInt(20), numS: nullInt(5), want: "decimal(20,5)"},
+		// timestamp 系: 既定 6 は省略、それ以外は付与
+		{name: "timestamp default precision is omitted", typ: "timestamp", dtP: nullInt(6), want: "timestamp"},
+		{name: "timestamp(3)", typ: "timestamp", dtP: nullInt(3), want: "timestamp(3)"},
+		{name: "timestamptz(0)", typ: "timestamptz", dtP: nullInt(0), want: "timestamptz(0)"},
+		{name: "time(2)", typ: "time", dtP: nullInt(2), want: "time(2)"},
+		{name: "interval(4)", typ: "interval", dtP: nullInt(4), want: "interval(4)"},
+		// bit: charLen があれば常に付与
+		{name: "bit(8)", typ: "bit", charLen: nullInt(8), want: "bit(8)"},
+		{name: "bit varying(64)", typ: "bit varying", charLen: nullInt(64), want: "bit varying(64)"},
+		// 修飾子対象外型は素通し
+		{name: "integer is unchanged", typ: "integer", numP: nullInt(32), want: "integer"},
+		{name: "boolean is unchanged", typ: "boolean", want: "boolean"},
+		{name: "uuid is unchanged", typ: "uuid", want: "uuid"},
+		// 配列: 基底に修飾子を付けて [] を保持
+		{name: "varchar(128)[]", typ: "varchar[]", charLen: nullInt(128), want: "varchar(128)[]"},
+		{name: "numeric(10,2)[]", typ: "numeric[]", numP: nullInt(10), numS: nullInt(2), want: "numeric(10,2)[]"},
+		{name: "timestamp(3)[]", typ: "timestamp[]", dtP: nullInt(3), want: "timestamp(3)[]"},
+		// 配列で要素の修飾子が NULL（呼び出し側で COALESCE が無効）の場合は無修飾のまま
+		{name: "text[] without any precision stays text[]", typ: "text[]", want: "text[]"},
+	}
+	_ = none // sql.NullInt64{} のゼロ値テスト用に確保（個別ケースの省略パラメータが暗黙に none）。
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			got := applyPGTypeModifier(c.typ, c.charLen, c.numP, c.numS, c.dtP)
+			if got != c.want {
+				t.Fatalf("applyPGTypeModifier(%q,...) = %q, want %q", c.typ, got, c.want)
 			}
 		})
 	}

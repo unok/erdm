@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -242,6 +243,63 @@ func pgArrayElementDisplay(udtName string) string {
 		return mapped
 	}
 	return stripped
+}
+
+// applyPGTypeModifier は型表記に PostgreSQL の修飾子（`varchar(N)` /
+// `numeric(p,s)` / `timestamp(N)` 等）を付与する純粋関数。
+//
+// 入力 `typ` は `resolvePGType` 後の表記（短縮形・末尾 `[]` 付き含む）。
+// 配列カラムでは `[]` を一旦剥がして基底型に修飾子を付け、再度 `[]` を付け直す
+// （要素型に対する修飾子付与は SQL 側 `information_schema.element_types` の
+// LEFT JOIN で `*_precision` / `_scale` / `_max_length` が COALESCE 済）。
+//
+// 修飾規則（要件: 取込み時に PG の precision/scale を保持する）:
+//
+//   - varchar / character / bit / bit varying: charLen が NULL でなければ `(N)`
+//   - numeric / decimal: numPrec が NULL でなければ `(p,s)`（s は NULL を 0 扱い）
+//   - timestamp / timestamptz / time / timetz / interval: dtPrec が NULL でなく
+//     かつ既定値 6 と異なる場合のみ `(N)`（既定 6 は冗長なため省略）
+//
+// 修飾対象に該当しない型（integer / boolean / text / uuid 等）は何もしない。
+func applyPGTypeModifier(typ string, charLen, numPrec, numScale, dtPrec sql.NullInt64) string {
+	base := typ
+	isArray := strings.HasSuffix(typ, "[]")
+	if isArray {
+		base = strings.TrimSuffix(typ, "[]")
+	}
+	mod := pgTypeModifierFor(base, charLen, numPrec, numScale, dtPrec)
+	if mod == "" {
+		return typ
+	}
+	if isArray {
+		return base + mod + "[]"
+	}
+	return base + mod
+}
+
+// pgTypeModifierFor は基底型名（配列の `[]` を剥がした後）に対して付与すべき
+// 修飾子文字列を返す。修飾子が不要な場合は空文字列を返す。
+func pgTypeModifierFor(base string, charLen, numPrec, numScale, dtPrec sql.NullInt64) string {
+	switch base {
+	case "varchar", "character", "bit", "bit varying":
+		if charLen.Valid {
+			return "(" + strconv.FormatInt(charLen.Int64, 10) + ")"
+		}
+	case "numeric", "decimal":
+		if numPrec.Valid {
+			scale := int64(0)
+			if numScale.Valid {
+				scale = numScale.Int64
+			}
+			return fmt.Sprintf("(%d,%d)", numPrec.Int64, scale)
+		}
+	case "timestamp", "timestamptz", "time", "timetz", "interval":
+		// PG の datetime_precision 既定値は 6。既定値はノイズになるため省略する。
+		if dtPrec.Valid && dtPrec.Int64 != 6 {
+			return "(" + strconv.FormatInt(dtPrec.Int64, 10) + ")"
+		}
+	}
+	return ""
 }
 
 // pgInternalToDisplay は PG 内部型名（`udt_name` の `_` 抜き）から

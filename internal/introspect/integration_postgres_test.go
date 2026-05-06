@@ -200,8 +200,13 @@ CREATE TABLE i_pg_arr (
     id bigserial PRIMARY KEY,
     tags text[] NOT NULL DEFAULT '{}'::text[],
     tag_ids integer[] NOT NULL DEFAULT '{}'::integer[],
-    titles character varying[] NOT NULL,
-    matrix numeric(10,2)[]
+    titles varchar(64)[] NOT NULL,
+    matrix numeric(10,2)[],
+    name varchar(128) NOT NULL,
+    price numeric(10,2),
+    qty numeric(10),
+    posted_at timestamp(3),
+    expires_at timestamptz NOT NULL DEFAULT now()
 );
 COMMENT ON TABLE  i_pg_arr        IS '配列型カラム';
 `
@@ -222,11 +227,13 @@ COMMENT ON TABLE  i_pg_arr        IS '配列型カラム';
 	wantSubstrings := []string{
 		"tags/tags [text[]][NN][='{}'::text[\\]]",
 		"tag_ids/tag_ids [integer[]][NN][='{}'::integer[\\]]",
-		"titles/titles [varchar[]][NN]",
-		// numeric(p,s)[] は data_type='ARRAY' / udt_name='_numeric' で取得される。
-		// PG は precision/scale を data_type に含めず別カラムへ載せるため、現状の
-		// 実装では `numeric[]` で出力される（precision 復元は本 PR スコープ外）。
-		"matrix/matrix [numeric[]]",
+		"titles/titles [varchar(64)[]][NN]",
+		"matrix/matrix [numeric(10,2)[]]",
+		"name/name [varchar(128)][NN]",
+		"price/price [numeric(10,2)]",
+		"qty/qty [numeric(10,0)]",
+		"posted_at/posted_at [timestamp(3)]",
+		"expires_at/expires_at [timestamptz][NN][=now()]",
 	}
 	for _, s := range wantSubstrings {
 		if !strings.Contains(gotText, s) {
