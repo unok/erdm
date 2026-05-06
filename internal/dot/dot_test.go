@@ -367,12 +367,12 @@ func TestRender_EdgeFallsBackToTableWhenParentHasNoPK(t *testing.T) {
 		t.Fatalf("Render: %v", err)
 	}
 	// 親 raw_log に PK が無いので tail ポートは付かず、子側 FK 列ポートだけが付く。
-	if !strings.Contains(got, "raw_log -> consumers:raw_log_ref:w") {
-		t.Errorf("expected `raw_log -> consumers:raw_log_ref:w` (tail without port, head with FK port), got:\n%s", got)
+	if !strings.Contains(got, "raw_log -> consumers:raw_log_ref__w:w") {
+		t.Errorf("expected `raw_log -> consumers:raw_log_ref__w:w` (tail without port, head with FK row west-anchor), got:\n%s", got)
 	}
-	// 親側に :id:e が現れていないことも併せて確認（誤って出すと誤接続になる）。
-	if strings.Contains(got, "raw_log:") {
-		t.Errorf("parent raw_log should not have a port suffix, got:\n%s", got)
+	// 親側に :id__e:e が現れていないことも併せて確認（誤って出すと誤接続になる）。
+	if strings.Contains(got, "raw_log:id__e") {
+		t.Errorf("parent raw_log should not have a port suffix when no PK, got:\n%s", got)
 	}
 }
 
@@ -418,11 +418,13 @@ func TestRender_EdgeOrientation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
-	// ポート付きエッジ `users:id:e -> posts:user_id:w` は親→子方向の正規化を
-	// 維持しつつ、接続点を「親 PK 列の東側」「子 FK 列の西側」に固定する形で
-	// 拡張された表記。方向反転の意味的整合は変わらない。
-	if !strings.Contains(got, "users:id:e -> posts:user_id:w") {
-		t.Errorf("expected edge `users:id:e -> posts:user_id:w` (parent PK column -> child FK column), got:\n%s", got)
+	// ポート付きエッジ `users:id__e:e -> posts:user_id__w:w` は親→子方向の
+	// 正規化を維持しつつ、接続点を「親 PK 列の右端アンカー」「子 FK 列の
+	// 左端アンカー」に固定する形で拡張された表記。アンカーは各行の左右両端に
+	// 配置された幅 1 の `<td port="<col>__w/__e">` で、テーブル枠の縁から
+	// 線が出るようにする（要件: 枠の中ではなく縁から接続）。
+	if !strings.Contains(got, "users:id__e:e -> posts:user_id__w:w") {
+		t.Errorf("expected edge `users:id__e:e -> posts:user_id__w:w` (parent PK row east-anchor -> child FK row west-anchor), got:\n%s", got)
 	}
 	if !strings.Contains(got, `headlabel = "SRC"`) {
 		t.Errorf("expected `headlabel = \"SRC\"` (子側=Source), got:\n%s", got)

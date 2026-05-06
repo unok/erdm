@@ -11,10 +11,10 @@ digraph g {
 
 
   users [label = <<table border="0" cellborder="0" cellpadding="0">
-    <tr><td colspan="2"><font face="Ricty-Bold">users</font></td></tr><tr><td align="left" port="id">id  int (NN)</td><td>P</td><td></td></tr><tr><td align="left" port="name">name  varchar(64) (NN)</td><td></td><td></td></tr></table>>];
+    <tr><td colspan="5"><font face="Ricty-Bold">users</font></td></tr><tr><td port="id__w" width="1" fixedsize="true"></td><td align="left">id  int (NN)</td><td>P</td><td></td><td port="id__e" width="1" fixedsize="true"></td></tr><tr><td port="name__w" width="1" fixedsize="true"></td><td align="left">name  varchar(64) (NN)</td><td></td><td></td><td port="name__e" width="1" fixedsize="true"></td></tr></table>>];
 
   sessions [label = <<table border="0" cellborder="0" cellpadding="0">
-    <tr><td colspan="2"><font face="Ricty-Bold">sessions</font></td></tr><tr><td align="left" port="id">id  int (NN)</td><td>P</td><td></td></tr><tr><td align="left" port="user_id">user_id  int (NN)</td><td>F</td><td></td></tr></table>>];
+    <tr><td colspan="5"><font face="Ricty-Bold">sessions</font></td></tr><tr><td port="id__w" width="1" fixedsize="true"></td><td align="left">id  int (NN)</td><td>P</td><td></td><td port="id__e" width="1" fixedsize="true"></td></tr><tr><td port="user_id__w" width="1" fixedsize="true"></td><td align="left">user_id  int (NN)</td><td>F</td><td></td><td port="user_id__e" width="1" fixedsize="true"></td></tr></table>>];
   }
 
 
@@ -25,6 +25,6 @@ digraph g {
     headlabel = "0..*"
     taillabel = "1"
   ]
-  users:id:e -> sessions:user_id:w
+  users:id__e:e -> sessions:user_id__w:w
 
 }

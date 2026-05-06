@@ -35,13 +35,19 @@ type dotCluster struct {
 // TailLabel は親側 cardinality（FK.CardinalityDestination）。
 //
 // TailPort / HeadPort は HTML ラベル table 内の `<td port="...">` に対応する
-// ポート名で、エッジを「テーブル枠」ではなく「該当カラムの行」から出すための
-// 接続点を指定する（要件: ER 図でリレーションをカラム単位の繋がりとして
-// 視認できるようにする）。
-//   - HeadPort: 子テーブル側の FK 列名（必ず分かる）。
-//   - TailPort: 親テーブル側の主キー先頭列名。親に PK が無い／FK 参照先が
-//     スコープ外で解決できない場合は空文字列とし、ポート指定なし（テーブル
-//     枠への接続）にフォールバックする。
+// ポート名で、エッジを「テーブル枠の縁」かつ「該当カラム行の高さ」から
+// 出すための接続点を指定する。
+//
+// 各カラム行の左右両端には幅 1 の「アンカー td」を配置している
+// （`dot_tables.tmpl`）。port 名は `<列名>__w` / `<列名>__e` の規約で、
+// 左端アンカーは行の西端＝テーブル枠の左縁、右端アンカーは行の東端＝
+// テーブル枠の右縁に張り付く（行の中央セルではないので、エッジが箱の
+// 内部から出る視覚的な違和感を避けられる）。
+//
+//   - HeadPort: 子側 FK 列の `<列名>__w` を採用（左縁から線を受ける）。
+//   - TailPort: 親側 PK 先頭列の `<列名>__e` を採用（右縁から線を出す）。
+//   - 親に PK が無い／FK 参照先が解決できない場合は空文字列とし、テンプレ
+//     側でポート指定なし（テーブル枠全体への接続）にフォールバックする。
 type dotEdge struct {
 	Parent    string
 	Child     string
@@ -126,13 +132,17 @@ func buildEdges(s *model.Schema) []dotEdge {
 			if c.WithoutErd || c.FK == nil {
 				continue
 			}
+			tail := pkPortByTable[c.FK.TargetTable]
+			if tail != "" {
+				tail += "__e"
+			}
 			out = append(out, dotEdge{
 				Parent:    c.FK.TargetTable,
 				Child:     t.Name,
 				HeadLabel: c.FK.CardinalitySource,
 				TailLabel: c.FK.CardinalityDestination,
-				TailPort:  pkPortByTable[c.FK.TargetTable],
-				HeadPort:  c.Name,
+				TailPort:  tail,
+				HeadPort:  c.Name + "__w",
 			})
 		}
 	}
