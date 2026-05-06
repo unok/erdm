@@ -297,7 +297,7 @@ func TestRender_CompositePKAndCardinality(t *testing.T) {
 func TestRender_DefaultAttributesAlwaysPresent(t *testing.T) {
 	required := []string{
 		"rankdir=LR",
-		"splines=ortho",
+		"splines=polyline",
 		"nodesep=1.0",
 		"ranksep=2.0",
 		"concentrate=false",

@@ -51,7 +51,7 @@ func TestCompat_DOTAttributes_AllFixtures(t *testing.T) {
 			s := string(data)
 			for _, want := range []string{
 				"rankdir=LR",
-				"splines=ortho",
+				"splines=polyline",
 				"nodesep=",
 				"ranksep=",
 				"concentrate=false",
