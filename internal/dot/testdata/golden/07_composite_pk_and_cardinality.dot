@@ -8,13 +8,13 @@ digraph g {
 
 
   customers [label = <<table border="1" cellborder="0" cellspacing="0" cellpadding="0">
-    <tr><td colspan="5"><font face="Ricty-Bold">顧客/customers</font></td></tr><tr><td port="id__w" width="1" fixedsize="true"></td><td align="left">id  int (NN)</td><td>P</td><td></td><td port="id__e" width="1" fixedsize="true"></td></tr><tr><td port="name__w" width="1" fixedsize="true"></td><td align="left">name  varchar(64) (NN)</td><td></td><td></td><td port="name__e" width="1" fixedsize="true"></td></tr></table>>];
+    <tr><td colspan="5"><font face="Ricty-Bold">顧客/customers</font></td></tr><tr><td port="id__w"></td><td align="left">id  int (NN)</td><td>P</td><td></td><td port="id__e"></td></tr><tr><td port="name__w"></td><td align="left">name  varchar(64) (NN)</td><td></td><td></td><td port="name__e"></td></tr></table>>];
 
   orders [label = <<table border="1" cellborder="0" cellspacing="0" cellpadding="0">
-    <tr><td colspan="5"><font face="Ricty-Bold">orders</font></td></tr><tr><td port="id__w" width="1" fixedsize="true"></td><td align="left">id  int (NN)</td><td>P</td><td></td><td port="id__e" width="1" fixedsize="true"></td></tr><tr><td port="customer_id__w" width="1" fixedsize="true"></td><td align="left">customer_id  int (NN)</td><td>F</td><td></td><td port="customer_id__e" width="1" fixedsize="true"></td></tr><tr><td port="status__w" width="1" fixedsize="true"></td><td align="left">status  varchar(16) (NN)</td><td></td><td></td><td port="status__e" width="1" fixedsize="true"></td></tr></table>>];
+    <tr><td colspan="5"><font face="Ricty-Bold">orders</font></td></tr><tr><td port="id__w"></td><td align="left">id  int (NN)</td><td>P</td><td></td><td port="id__e"></td></tr><tr><td port="customer_id__w"></td><td align="left">customer_id  int (NN)</td><td>F</td><td></td><td port="customer_id__e"></td></tr><tr><td port="status__w"></td><td align="left">status  varchar(16) (NN)</td><td></td><td></td><td port="status__e"></td></tr></table>>];
 
   order_items [label = <<table border="1" cellborder="0" cellspacing="0" cellpadding="0">
-    <tr><td colspan="5"><font face="Ricty-Bold">order_items</font></td></tr><tr><td port="order_id__w" width="1" fixedsize="true"></td><td align="left">order_id  int (NN)</td><td>PF</td><td></td><td port="order_id__e" width="1" fixedsize="true"></td></tr><tr><td port="line_no__w" width="1" fixedsize="true"></td><td align="left">line_no  int (NN)</td><td>P</td><td></td><td port="line_no__e" width="1" fixedsize="true"></td></tr><tr><td port="qty__w" width="1" fixedsize="true"></td><td align="left">qty  int (NN)</td><td></td><td></td><td port="qty__e" width="1" fixedsize="true"></td></tr></table>>];
+    <tr><td colspan="5"><font face="Ricty-Bold">order_items</font></td></tr><tr><td port="order_id__w"></td><td align="left">order_id  int (NN)</td><td>PF</td><td></td><td port="order_id__e"></td></tr><tr><td port="line_no__w"></td><td align="left">line_no  int (NN)</td><td>P</td><td></td><td port="line_no__e"></td></tr><tr><td port="qty__w"></td><td align="left">qty  int (NN)</td><td></td><td></td><td port="qty__e"></td></tr></table>>];
 
 
 
