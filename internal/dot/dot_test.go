@@ -298,8 +298,8 @@ func TestRender_DefaultAttributesAlwaysPresent(t *testing.T) {
 	required := []string{
 		"rankdir=LR",
 		"splines=ortho",
-		"nodesep=0.8",
-		"ranksep=1.2",
+		"nodesep=1.0",
+		"ranksep=2.0",
 		"concentrate=false",
 	}
 	s := &model.Schema{
