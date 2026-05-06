@@ -8,10 +8,10 @@ digraph g {
 
 
   users [label = <<table border="0" cellborder="0" cellpadding="0">
-    <tr><td colspan="2"><font face="Ricty-Bold">users</font></td></tr><tr><td align="left">id  int (NN)</td><td>P</td><td></td></tr><tr><td align="left">name  varchar(64) (NN)</td><td></td><td></td></tr></table>>];
+    <tr><td colspan="2"><font face="Ricty-Bold">users</font></td></tr><tr><td align="left" port="id">id  int (NN)</td><td>P</td><td></td></tr><tr><td align="left" port="name">name  varchar(64) (NN)</td><td></td><td></td></tr></table>>];
 
   audit_logs [label = <<table border="0" cellborder="0" cellpadding="0">
-    <tr><td colspan="2"><font face="Ricty-Bold">audit_logs</font></td></tr><tr><td align="left">id  int (NN)</td><td>P</td><td></td></tr><tr><td align="left">actor_id  int (NN)</td><td>F</td><td></td></tr><tr><td align="left">target_id  int (NN)</td><td>F</td><td></td></tr></table>>];
+    <tr><td colspan="2"><font face="Ricty-Bold">audit_logs</font></td></tr><tr><td align="left" port="id">id  int (NN)</td><td>P</td><td></td></tr><tr><td align="left" port="actor_id">actor_id  int (NN)</td><td>F</td><td></td></tr><tr><td align="left" port="target_id">target_id  int (NN)</td><td>F</td><td></td></tr></table>>];
 
 
 
@@ -20,7 +20,7 @@ digraph g {
     headlabel = "0..*"
     taillabel = "1"
   ]
-  users -> audit_logs
+  users:id:e -> audit_logs:actor_id:w
 
 
   edge [
@@ -28,6 +28,6 @@ digraph g {
     headlabel = "0..*"
     taillabel = "1"
   ]
-  users -> audit_logs
+  users:id:e -> audit_logs:target_id:w
 
 }

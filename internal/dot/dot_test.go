@@ -333,6 +333,49 @@ func TestRender_NilSchema(t *testing.T) {
 	}
 }
 
+// TestRender_EdgeFallsBackToTableWhenParentHasNoPK は、親テーブルが PK を
+// 持たない場合に親側のポート指定が省略され、テーブル枠への接続にフォール
+// バックすることを確認する。子側 FK 列のポート指定は維持される。
+func TestRender_EdgeFallsBackToTableWhenParentHasNoPK(t *testing.T) {
+	s := &model.Schema{
+		Title: "no_pk_parent",
+		Tables: []model.Table{
+			{
+				Name:        "raw_log",
+				Columns:     []model.Column{{Name: "value", Type: "text"}},
+				PrimaryKeys: nil, // 意図的に PK 無し
+			},
+			{
+				Name: "consumers",
+				Columns: []model.Column{
+					{Name: "id", Type: "int", IsPrimaryKey: true},
+					{
+						Name: "raw_log_ref", Type: "int",
+						FK: &model.FK{
+							TargetTable:            "raw_log",
+							CardinalitySource:      "0..*",
+							CardinalityDestination: "1",
+						},
+					},
+				},
+				PrimaryKeys: []int{0},
+			},
+		},
+	}
+	got, err := Render(s)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	// 親 raw_log に PK が無いので tail ポートは付かず、子側 FK 列ポートだけが付く。
+	if !strings.Contains(got, "raw_log -> consumers:raw_log_ref:w") {
+		t.Errorf("expected `raw_log -> consumers:raw_log_ref:w` (tail without port, head with FK port), got:\n%s", got)
+	}
+	// 親側に :id:e が現れていないことも併せて確認（誤って出すと誤接続になる）。
+	if strings.Contains(got, "raw_log:") {
+		t.Errorf("parent raw_log should not have a port suffix, got:\n%s", got)
+	}
+}
+
 // TestRender_EdgeOrientation は親→子方向反転の意味的整合を機械的に検証する。
 //
 // posts.user_id → users.id の FK において、
@@ -375,8 +418,11 @@ func TestRender_EdgeOrientation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
-	if !strings.Contains(got, "users -> posts") {
-		t.Errorf("expected edge `users -> posts` (parent -> child), got:\n%s", got)
+	// ポート付きエッジ `users:id:e -> posts:user_id:w` は親→子方向の正規化を
+	// 維持しつつ、接続点を「親 PK 列の東側」「子 FK 列の西側」に固定する形で
+	// 拡張された表記。方向反転の意味的整合は変わらない。
+	if !strings.Contains(got, "users:id:e -> posts:user_id:w") {
+		t.Errorf("expected edge `users:id:e -> posts:user_id:w` (parent PK column -> child FK column), got:\n%s", got)
 	}
 	if !strings.Contains(got, `headlabel = "SRC"`) {
 		t.Errorf("expected `headlabel = \"SRC\"` (子側=Source), got:\n%s", got)

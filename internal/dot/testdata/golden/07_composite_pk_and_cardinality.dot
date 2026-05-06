@@ -8,13 +8,13 @@ digraph g {
 
 
   customers [label = <<table border="0" cellborder="0" cellpadding="0">
-    <tr><td colspan="2"><font face="Ricty-Bold">顧客/customers</font></td></tr><tr><td align="left">id  int (NN)</td><td>P</td><td></td></tr><tr><td align="left">name  varchar(64) (NN)</td><td></td><td></td></tr></table>>];
+    <tr><td colspan="2"><font face="Ricty-Bold">顧客/customers</font></td></tr><tr><td align="left" port="id">id  int (NN)</td><td>P</td><td></td></tr><tr><td align="left" port="name">name  varchar(64) (NN)</td><td></td><td></td></tr></table>>];
 
   orders [label = <<table border="0" cellborder="0" cellpadding="0">
-    <tr><td colspan="2"><font face="Ricty-Bold">orders</font></td></tr><tr><td align="left">id  int (NN)</td><td>P</td><td></td></tr><tr><td align="left">customer_id  int (NN)</td><td>F</td><td></td></tr><tr><td align="left">status  varchar(16) (NN)</td><td></td><td></td></tr></table>>];
+    <tr><td colspan="2"><font face="Ricty-Bold">orders</font></td></tr><tr><td align="left" port="id">id  int (NN)</td><td>P</td><td></td></tr><tr><td align="left" port="customer_id">customer_id  int (NN)</td><td>F</td><td></td></tr><tr><td align="left" port="status">status  varchar(16) (NN)</td><td></td><td></td></tr></table>>];
 
   order_items [label = <<table border="0" cellborder="0" cellpadding="0">
-    <tr><td colspan="2"><font face="Ricty-Bold">order_items</font></td></tr><tr><td align="left">order_id  int (NN)</td><td>PF</td><td></td></tr><tr><td align="left">line_no  int (NN)</td><td>P</td><td></td></tr><tr><td align="left">qty  int (NN)</td><td></td><td></td></tr></table>>];
+    <tr><td colspan="2"><font face="Ricty-Bold">order_items</font></td></tr><tr><td align="left" port="order_id">order_id  int (NN)</td><td>PF</td><td></td></tr><tr><td align="left" port="line_no">line_no  int (NN)</td><td>P</td><td></td></tr><tr><td align="left" port="qty">qty  int (NN)</td><td></td><td></td></tr></table>>];
 
 
 
@@ -23,7 +23,7 @@ digraph g {
     headlabel = "0..*"
     taillabel = "1"
   ]
-  customers -> orders
+  customers:id:e -> orders:customer_id:w
 
 
   edge [
@@ -31,6 +31,6 @@ digraph g {
     headlabel = "1..*"
     taillabel = "1"
   ]
-  orders -> order_items
+  orders:id:e -> order_items:order_id:w
 
 }

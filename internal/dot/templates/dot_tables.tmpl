@@ -6,7 +6,7 @@
     </font></td></tr>
     {{- range $k, $c := .Columns}}
     {{- if (not .WithoutErd) -}}
-    <tr><td align="left">
+    <tr><td align="left" port="{{.Name}}">
     {{- if ne .LogicalName ""}}{{- .LogicalName}}/{{end}}{{.Name}}  {{.Type}} {{if (and (not .AllowNull) .IsUnique) -}}
     (UNN)
     {{- else if not .AllowNull -}}

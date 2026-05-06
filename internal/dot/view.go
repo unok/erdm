@@ -33,11 +33,22 @@ type dotCluster struct {
 // 矢頭（head）= 子（FK カラムを持つ側 = カラム所属テーブル）。
 // HeadLabel は子側 cardinality（FK.CardinalitySource）、
 // TailLabel は親側 cardinality（FK.CardinalityDestination）。
+//
+// TailPort / HeadPort は HTML ラベル table 内の `<td port="...">` に対応する
+// ポート名で、エッジを「テーブル枠」ではなく「該当カラムの行」から出すための
+// 接続点を指定する（要件: ER 図でリレーションをカラム単位の繋がりとして
+// 視認できるようにする）。
+//   - HeadPort: 子テーブル側の FK 列名（必ず分かる）。
+//   - TailPort: 親テーブル側の主キー先頭列名。親に PK が無い／FK 参照先が
+//     スコープ外で解決できない場合は空文字列とし、ポート指定なし（テーブル
+//     枠への接続）にフォールバックする。
 type dotEdge struct {
 	Parent    string
 	Child     string
 	HeadLabel string
 	TailLabel string
+	TailPort  string
+	HeadPort  string
 }
 
 // buildView は Schema からビューモデルを派生する。
@@ -100,7 +111,13 @@ func collectUngroupedTables(s *model.Schema) []*model.Table {
 //
 // WithoutErd カラム由来のエッジは除外（要件 1.8）。同一親子間の複数 FK は
 // 各カラムごとに独立 edge として連続して append する（要件 1.7、重複統合なし）。
+//
+// 接続点（ポート）の解決:
+//   - HeadPort: 子側 FK 列名をそのまま採用する。
+//   - TailPort: 親テーブルの先頭 PK 列名を採用する。親が見つからない／PK
+//     未定義の場合は空文字列としてテンプレ側でポート指定をスキップする。
 func buildEdges(s *model.Schema) []dotEdge {
+	pkPortByTable := buildPKPortIndex(s.Tables)
 	var out []dotEdge
 	for ti := range s.Tables {
 		t := &s.Tables[ti]
@@ -114,10 +131,30 @@ func buildEdges(s *model.Schema) []dotEdge {
 				Child:     t.Name,
 				HeadLabel: c.FK.CardinalitySource,
 				TailLabel: c.FK.CardinalityDestination,
+				TailPort:  pkPortByTable[c.FK.TargetTable],
+				HeadPort:  c.Name,
 			})
 		}
 	}
 	return out
+}
+
+// buildPKPortIndex は (テーブル名 → 先頭 PK 列名) の索引を作る。PK が無い
+// テーブルはエントリを持たず、呼び出し側は空文字列扱いになる。
+func buildPKPortIndex(tables []model.Table) map[string]string {
+	index := make(map[string]string, len(tables))
+	for ti := range tables {
+		t := &tables[ti]
+		if len(t.PrimaryKeys) == 0 {
+			continue
+		}
+		idx := t.PrimaryKeys[0]
+		if idx < 0 || idx >= len(t.Columns) {
+			continue
+		}
+		index[t.Name] = t.Columns[idx].Name
+	}
+	return index
 }
 
 // sanitizeIdentifier はグループ名を DOT 識別子として安全な形に整える。

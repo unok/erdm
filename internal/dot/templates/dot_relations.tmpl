@@ -6,5 +6,5 @@
     headlabel = "{{.HeadLabel}}"
     taillabel = "{{.TailLabel}}"
   ]
-  {{.Parent}} -> {{.Child}}
+  {{.Parent}}{{if .TailPort}}:{{.TailPort}}:e{{end}} -> {{.Child}}{{if .HeadPort}}:{{.HeadPort}}:w{{end}}
 {{end}}{{end}}
