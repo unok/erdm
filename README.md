@@ -38,7 +38,28 @@ make release
 
 ## Usage
 
+`erdm` provides three subcommands. Run `erdm` with no arguments to print the render-mode usage line.
+
+| Subcommand | Purpose |
+| --- | --- |
+| (default, no subcommand) | Render `.erdm` to DOT / PNG / HTML / PostgreSQL DDL / SQLite DDL, or to ELK JSON with `--format=elk`. |
+| `serve` | Start the Web UI HTTP server (browse, edit layout, export). |
+| `import` | Connect to a running RDBMS and emit a `.erdm` source file from its live schema. |
+
+Flags accept both `-flag` and `--flag`; both `=value` and space-separated values work.
+
 ### Render mode (default)
+
+```text
+erdm [-output_dir DIR] [--format=dot|elk] schema.erdm
+```
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `-output_dir DIR` | current directory | Output directory for generated artifacts. Must already exist. |
+| `--format=dot\|elk` | `dot` | `dot` writes DOT / PNG / HTML / `*.pg.sql` / `*.sqlite3.sql` into `-output_dir`. `elk` writes ELK JSON to stdout, or to `<output_dir>/<basename>.elk.json` when `-output_dir` is explicitly given. |
+
+`--format=dot` requires the `dot` command (Graphviz) on `PATH` for the PNG step. `--format=elk` does not.
 
 ```shell
 # Generate DOT / PNG / HTML / *.pg.sql / *.sqlite3.sql into ./out
@@ -53,9 +74,15 @@ erdm --format=elk -output_dir out doc/sample/test.erdm
 
 ### Serve mode (Web UI)
 
-```shell
-erdm serve [--port=8080] [--listen=127.0.0.1] [--no-write] schema.erdm
+```text
+erdm serve [--port=N] [--listen=ADDR] [--no-write] schema.erdm
 ```
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `--port=N` | `8080` | HTTP listen port. |
+| `--listen=ADDR` | `127.0.0.1` | HTTP listen address. |
+| `--no-write` | off | Read-only mode. `PUT` endpoints reject with 403. |
 
 The server exposes:
 
@@ -68,7 +95,53 @@ The server exposes:
 | `/api/export/svg` | GET | SVG via Graphviz |
 | `/api/export/png` | GET | PNG via Graphviz |
 
-`--no-write` switches the server into read-only mode (PUT endpoints reject with 403).
+The `svg` / `png` export endpoints require `dot` (Graphviz) on `PATH`; without it they respond with 503. The other endpoints work without Graphviz.
+
+### Import mode (live RDBMS → `.erdm`)
+
+`erdm import` connects to a running PostgreSQL, MySQL, or SQLite database and emits an `.erdm` source file from its current schema.
+
+```text
+erdm import --dsn=<DSN> [--driver=postgres|mysql|sqlite] [--out=PATH] [--title=NAME] [--schema=NAME]
+```
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `--dsn=DSN` | (required) | Source database DSN. Passwords are masked in any error or log output. |
+| `--driver=NAME` | auto-detect from DSN | Force `postgres`, `mysql`, or `sqlite`. Detection rules below. |
+| `--out=PATH` | stdout | Output `.erdm` file path. The parent directory must already exist. |
+| `--title=NAME` | DB name (PG / MySQL) or file base (SQLite) | Title written to the resulting `.erdm` (`# Title:` line). |
+| `--schema=NAME` | `public` (PostgreSQL) / connected DB via `SELECT DATABASE()` (MySQL) | Target schema name. Ignored for SQLite. |
+
+Driver auto-detection (case-insensitive):
+
+| DSN form | Detected driver |
+| --- | --- |
+| `postgres://...`, `postgresql://...` | `postgres` |
+| `mysql://...`, `user:pass@tcp(host:port)/db` | `mysql` |
+| `file:...`, `*.db`, `*.sqlite`, `*.sqlite3` | `sqlite` |
+
+```shell
+# SQLite file → .erdm on stdout
+erdm import --dsn=./app.db > schema.erdm
+
+# Same, written to a file
+erdm import --dsn=./app.db --out=./schema.erdm
+
+# PostgreSQL with an explicit schema and title
+erdm import \
+  --dsn='postgres://user:secret@host:5432/db?sslmode=disable' \
+  --schema=public \
+  --title=MyApp \
+  --out=./schema.erdm
+
+# MySQL standard DSN (driver inferred from `user@tcp(...)`)
+erdm import \
+  --dsn='user:secret@tcp(127.0.0.1:3306)/shop?parseTime=true' \
+  --out=./shop.erdm
+```
+
+The schema is validated after introspection; on validation failure no output file is written.
 
 ## DSL Syntax
 
