@@ -4,16 +4,16 @@ digraph g {
   nodesep=0.8;
   ranksep=1.2;
   concentrate=false;
-  node [shape=box,style=rounded,height=0.08,fontname="Noto Sans Mono CJK JP"];
+  node [shape=plaintext,height=0.08,margin="0",fontname="Noto Sans Mono CJK JP"];
 
   subgraph cluster_core {
     label="core";
 
 
-  users [label = <<table border="0" cellborder="0" cellpadding="0">
+  users [label = <<table border="1" cellborder="0" cellspacing="0" cellpadding="0">
     <tr><td colspan="5"><font face="Ricty-Bold">users</font></td></tr><tr><td port="id__w" width="1" fixedsize="true"></td><td align="left">id  int (NN)</td><td>P</td><td></td><td port="id__e" width="1" fixedsize="true"></td></tr><tr><td port="name__w" width="1" fixedsize="true"></td><td align="left">name  varchar(64) (NN)</td><td></td><td></td><td port="name__e" width="1" fixedsize="true"></td></tr></table>>];
 
-  events [label = <<table border="0" cellborder="0" cellpadding="0">
+  events [label = <<table border="1" cellborder="0" cellspacing="0" cellpadding="0">
     <tr><td colspan="5"><font face="Ricty-Bold">events</font></td></tr><tr><td port="id__w" width="1" fixedsize="true"></td><td align="left">id  int (NN)</td><td>P</td><td></td><td port="id__e" width="1" fixedsize="true"></td></tr><tr><td port="user_id__w" width="1" fixedsize="true"></td><td align="left">user_id  int (NN)</td><td>F</td><td></td><td port="user_id__e" width="1" fixedsize="true"></td></tr></table>>];
   }
 

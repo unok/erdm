@@ -4,7 +4,7 @@
   nodesep=0.8;
   ranksep=1.2;
   concentrate=false;
-  node [shape=box,style=rounded,height=0.08,fontname="Noto Sans Mono CJK JP"];
+  node [shape=plaintext,height=0.08,margin="0",fontname="Noto Sans Mono CJK JP"];
 {{range $c := .Clusters}}
   subgraph cluster_{{$c.Name}} {
     label="{{$c.Label}}";
