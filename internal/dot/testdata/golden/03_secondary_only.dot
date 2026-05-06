@@ -24,6 +24,8 @@ digraph g {
     arrowhead = "none"
     headlabel = "0..*"
     taillabel = "1"
+    color = "#bcbd22"
+    fontcolor = "#bcbd22"
   ]
   users:id__e:e -> events:user_id__w:w
 

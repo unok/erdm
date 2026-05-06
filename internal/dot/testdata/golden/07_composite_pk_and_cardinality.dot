@@ -22,6 +22,8 @@ digraph g {
     arrowhead = "none"
     headlabel = "0..*"
     taillabel = "1"
+    color = "#9467bd"
+    fontcolor = "#9467bd"
   ]
   customers:id__e:e -> orders:customer_id__w:w
 
@@ -30,6 +32,8 @@ digraph g {
     arrowhead = "none"
     headlabel = "1..*"
     taillabel = "1"
+    color = "#1f77b4"
+    fontcolor = "#1f77b4"
   ]
   orders:id__e:e -> order_items:order_id__w:w
 

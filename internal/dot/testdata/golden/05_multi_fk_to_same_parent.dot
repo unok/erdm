@@ -19,6 +19,8 @@ digraph g {
     arrowhead = "none"
     headlabel = "0..*"
     taillabel = "1"
+    color = "#bcbd22"
+    fontcolor = "#bcbd22"
   ]
   users:id__e:e -> audit_logs:actor_id__w:w
 
@@ -27,6 +29,8 @@ digraph g {
     arrowhead = "none"
     headlabel = "0..*"
     taillabel = "1"
+    color = "#bcbd22"
+    fontcolor = "#bcbd22"
   ]
   users:id__e:e -> audit_logs:target_id__w:w
 
