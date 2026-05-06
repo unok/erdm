@@ -20,11 +20,23 @@ import (
 	"os/exec"
 	"path/filepath"
 
+	// DB ドライバの blank import（要件 12.3）。erdm CLI の本番バイナリで
+	// `database/sql.Open("pgx" / "mysql" / "sqlite", ...)` を機能させるため、
+	// 本パッケージ（`main`）と internal/introspect パッケージ以外には
+	// ドライバ依存を持ち込まない。internal/introspect 自身のテストは
+	// driver なしでも完結する経路に絞り込んでいるため、blank import は
+	// 本ファイル 1 箇所に集約する。
+	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/jackc/pgx/v5/stdlib"
+	_ "modernc.org/sqlite"
+
 	"github.com/unok/erdm/internal/ddl"
 	"github.com/unok/erdm/internal/dot"
 	"github.com/unok/erdm/internal/elk"
 	"github.com/unok/erdm/internal/html"
+	"github.com/unok/erdm/internal/introspect"
 	"github.com/unok/erdm/internal/parser"
+	"github.com/unok/erdm/internal/serializer"
 	"github.com/unok/erdm/internal/server"
 )
 
@@ -41,11 +53,19 @@ var spaDistFS embed.FS
 // `[render]` ではなく旧形式の表記を維持し、後方互換を読み手に明示する。
 const usageRender = "Usage: erdm [-output_dir DIR] [--format=dot|elk] schema.erdm"
 const usageServe = "Usage: erdm serve [--port=N] [--listen=ADDR] [--no-write] schema.erdm"
+const usageImport = "usage: erdm import --driver=postgres|mysql|sqlite --dsn=<DSN> [--out=PATH]"
 
 func main() {
 	args := os.Args[1:]
 	if len(args) > 0 && args[0] == "serve" {
 		if err := runServe(args[1:]); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
+	if len(args) > 0 && args[0] == "import" {
+		if err := runImport(args[1:]); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
@@ -257,6 +277,75 @@ func runServe(args []string) error {
 		return fmt.Errorf("server init: %w", err)
 	}
 	return srv.Run(context.Background())
+}
+
+// runImport は import サブコマンドの引数を解析し、稼働中の RDBMS から
+// erdm 形式のスキーマを取得・出力する直線パイプラインを構成する。
+//
+// 段階（design.md §"runImport" / 要件 1.1 ～ 1.4 / 8.x / 11.x）:
+//  1. 引数解析（--dsn 必須、--driver / --out / --title / --schema は任意）
+//  2. introspect.Introspect でドライバ確定 → タイトル解決 → 接続 → スキーマ取得
+//  3. Schema.Validate で不変条件検査（違反時はファイル未書き出し / 標準エラー出力）
+//  4. serializer.Serialize で `.erdm` バイト列を生成
+//  5. --out 未指定時は標準出力、指定時は親ディレクトリ存在検査の上ファイル書き出し
+//
+// 失敗時は error を返し、main 側で `os.Exit(1)` に変換する。エラー文言の
+// 生成箇所では原 DSN を露出させない（要件 10.4）。`introspect.Introspect`
+// 内部でマスク済みエラーを返すため、本関数では追加ラップ時に DSN を埋め込まない。
+func runImport(args []string) error {
+	fs := flag.NewFlagSet("import", flag.ContinueOnError)
+	fs.SetOutput(os.Stderr)
+	dsn := fs.String("dsn", "", "DSN of source database (required)")
+	driver := fs.String("driver", "", "driver: postgres|mysql|sqlite (auto-detect if empty)")
+	out := fs.String("out", "", "output file path (stdout if empty)")
+	title := fs.String("title", "", "schema title (defaults to DB name or file base)")
+	schemaName := fs.String("schema", "", "schema name (PostgreSQL/MySQL only)")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *dsn == "" {
+		return errors.New(usageImport)
+	}
+
+	opts := introspect.Options{
+		Driver: introspect.Driver(*driver),
+		DSN:    *dsn,
+		Schema: *schemaName,
+		Title:  *title,
+	}
+	schema, err := introspect.Introspect(context.Background(), opts)
+	if err != nil {
+		return err
+	}
+	if err := schema.Validate(); err != nil {
+		return fmt.Errorf("import: validate: %w", err)
+	}
+	data, err := serializer.Serialize(schema)
+	if err != nil {
+		return fmt.Errorf("import: serialize: %w", err)
+	}
+	return writeImportOutput(*out, data)
+}
+
+// writeImportOutput は --out の値に応じて出力経路を切り替える（要件 1.3 / 1.4 /
+// 11.4）。--out が空なら標準出力、指定があれば親ディレクトリ存在検査の上で
+// ファイル書き出しする。
+func writeImportOutput(outPath string, content []byte) error {
+	if outPath == "" {
+		if _, err := os.Stdout.Write(content); err != nil {
+			return fmt.Errorf("import: write stdout: %w", err)
+		}
+		return nil
+	}
+	parent := filepath.Dir(outPath)
+	st, err := os.Stat(parent)
+	if err != nil || !st.IsDir() {
+		return fmt.Errorf("output directory not found: %s", parent)
+	}
+	if err := os.WriteFile(outPath, content, 0644); err != nil {
+		return fmt.Errorf("import: write %s: %w", outPath, err)
+	}
+	return nil
 }
 
 // requireFile は path が存在し、かつディレクトリでない通常ファイルかを検査する。
