@@ -52,18 +52,33 @@ WHERE ns.nspname = $1
 //   - `column_default` の NULL は SQL 側で空文字列に正規化する（要件 4.5 / 4.7）。
 //   - `udt_name` は `data_type='USER-DEFINED'`（enum 等のユーザ定義型）の場合の
 //     表示名解決に使用する。
+//   - 末尾 4 カラムは型の修飾子（`varchar(N)` / `numeric(p,s)` / `timestamp(N)` 等）
+//     を組み立てるための材料。配列カラムは `information_schema.columns` 側では
+//     これらが NULL になるため、`information_schema.element_types` を `dtd_identifier`
+//     で LEFT JOIN し、要素型の修飾子を COALESCE で優先する（`numeric(10,2)[]`
+//     のような配列要素の精度復元のため）。
 const sqlSelectPGColumns = `
 SELECT
-    table_name,
-    column_name,
-    ordinal_position,
-    data_type,
-    udt_name,
-    is_nullable,
-    COALESCE(column_default, '')
-FROM information_schema.columns
-WHERE table_schema = $1
-ORDER BY table_name, ordinal_position
+    c.table_name,
+    c.column_name,
+    c.ordinal_position,
+    c.data_type,
+    c.udt_name,
+    c.is_nullable,
+    COALESCE(c.column_default, ''),
+    COALESCE(et.character_maximum_length, c.character_maximum_length),
+    COALESCE(et.numeric_precision, c.numeric_precision),
+    COALESCE(et.numeric_scale, c.numeric_scale),
+    COALESCE(et.datetime_precision, c.datetime_precision)
+FROM information_schema.columns c
+LEFT JOIN information_schema.element_types et
+    ON et.object_catalog = c.table_catalog
+   AND et.object_schema = c.table_schema
+   AND et.object_name = c.table_name
+   AND et.object_type = 'TABLE'
+   AND et.collection_type_identifier = c.dtd_identifier
+WHERE c.table_schema = $1
+ORDER BY c.table_name, c.ordinal_position
 `
 
 // sqlSelectPGColumnComments はカラムコメントを `pg_description` から取得する
@@ -174,15 +189,22 @@ ORDER BY tbl.relname, idx.relname, ord.n
 `
 
 // pgColumnRow は selectPGColumns が SQL 結果を Go 側で扱うための一時行。
-// 取得後に normalizePGSerial／USER-DEFINED 解決を経て rawColumn に変換する。
+// 取得後に normalizePGSerial／USER-DEFINED 解決／型修飾子付与を経て rawColumn に変換する。
+//
+// 末尾の 4 つの NullInt64 は配列カラムの場合は要素型側の値（element_types JOIN
+// 由来）、非配列カラムでは columns 自身の値が入る（SQL 側で COALESCE 済）。
 type pgColumnRow struct {
-	Table      string
-	Name       string
-	Position   int
-	DataType   string
-	UDTName    string
-	IsNullable string
-	Default    string
+	Table         string
+	Name          string
+	Position      int
+	DataType      string
+	UDTName       string
+	IsNullable    string
+	Default       string
+	CharMaxLength sql.NullInt64
+	NumPrecision sql.NullInt64
+	NumScale     sql.NullInt64
+	DTPrecision  sql.NullInt64
 }
 
 // pgFKRow は selectPGForeignKeys の 1 行を表す。同一 constraintName のカラムを
@@ -270,11 +292,13 @@ func selectPGColumns(ctx context.Context, tx *sql.Tx, schema string) (map[string
 	out := map[string][]rawColumn{}
 	for rows.Next() {
 		var r pgColumnRow
-		if err := rows.Scan(&r.Table, &r.Name, &r.Position, &r.DataType, &r.UDTName, &r.IsNullable, &r.Default); err != nil {
+		if err := rows.Scan(&r.Table, &r.Name, &r.Position, &r.DataType, &r.UDTName, &r.IsNullable, &r.Default,
+			&r.CharMaxLength, &r.NumPrecision, &r.NumScale, &r.DTPrecision); err != nil {
 			return nil, fmt.Errorf("introspect/postgres: select columns: scan: %w", err)
 		}
 		typ, defOut := normalizePGSerial(r.DataType, r.Default)
 		typ = resolvePGType(typ, r.UDTName)
+		typ = applyPGTypeModifier(typ, r.CharMaxLength, r.NumPrecision, r.NumScale, r.DTPrecision)
 		out[r.Table] = append(out[r.Table], rawColumn{
 			Name:    r.Name,
 			Type:    typ,

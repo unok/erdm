@@ -297,9 +297,9 @@ func TestRender_CompositePKAndCardinality(t *testing.T) {
 func TestRender_DefaultAttributesAlwaysPresent(t *testing.T) {
 	required := []string{
 		"rankdir=LR",
-		"splines=ortho",
-		"nodesep=0.8",
-		"ranksep=1.2",
+		"splines=polyline",
+		"nodesep=1.0",
+		"ranksep=2.0",
 		"concentrate=false",
 	}
 	s := &model.Schema{
@@ -330,6 +330,49 @@ func TestRender_NilSchema(t *testing.T) {
 	got, err := Render(nil)
 	if err == nil {
 		t.Fatalf("Render(nil) returned no error; got=%q", got)
+	}
+}
+
+// TestRender_EdgeFallsBackToTableWhenParentHasNoPK は、親テーブルが PK を
+// 持たない場合に親側のポート指定が省略され、テーブル枠への接続にフォール
+// バックすることを確認する。子側 FK 列のポート指定は維持される。
+func TestRender_EdgeFallsBackToTableWhenParentHasNoPK(t *testing.T) {
+	s := &model.Schema{
+		Title: "no_pk_parent",
+		Tables: []model.Table{
+			{
+				Name:        "raw_log",
+				Columns:     []model.Column{{Name: "value", Type: "text"}},
+				PrimaryKeys: nil, // 意図的に PK 無し
+			},
+			{
+				Name: "consumers",
+				Columns: []model.Column{
+					{Name: "id", Type: "int", IsPrimaryKey: true},
+					{
+						Name: "raw_log_ref", Type: "int",
+						FK: &model.FK{
+							TargetTable:            "raw_log",
+							CardinalitySource:      "0..*",
+							CardinalityDestination: "1",
+						},
+					},
+				},
+				PrimaryKeys: []int{0},
+			},
+		},
+	}
+	got, err := Render(s)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	// 親 raw_log に PK が無いので tail ポートは付かず、子側 FK 列ポートだけが付く。
+	if !strings.Contains(got, "raw_log -> consumers:raw_log_ref__w:w") {
+		t.Errorf("expected `raw_log -> consumers:raw_log_ref__w:w` (tail without port, head with FK row west-anchor), got:\n%s", got)
+	}
+	// 親側に :id__e:e が現れていないことも併せて確認（誤って出すと誤接続になる）。
+	if strings.Contains(got, "raw_log:id__e") {
+		t.Errorf("parent raw_log should not have a port suffix when no PK, got:\n%s", got)
 	}
 }
 
@@ -375,8 +418,13 @@ func TestRender_EdgeOrientation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
-	if !strings.Contains(got, "users -> posts") {
-		t.Errorf("expected edge `users -> posts` (parent -> child), got:\n%s", got)
+	// ポート付きエッジ `users:id__e:e -> posts:user_id__w:w` は親→子方向の
+	// 正規化を維持しつつ、接続点を「親 PK 列の右端アンカー」「子 FK 列の
+	// 左端アンカー」に固定する形で拡張された表記。アンカーは各行の左右両端に
+	// 配置された幅 1 の `<td port="<col>__w/__e">` で、テーブル枠の縁から
+	// 線が出るようにする（要件: 枠の中ではなく縁から接続）。
+	if !strings.Contains(got, "users:id__e:e -> posts:user_id__w:w") {
+		t.Errorf("expected edge `users:id__e:e -> posts:user_id__w:w` (parent PK row east-anchor -> child FK row west-anchor), got:\n%s", got)
 	}
 	if !strings.Contains(got, `headlabel = "SRC"`) {
 		t.Errorf("expected `headlabel = \"SRC\"` (子側=Source), got:\n%s", got)

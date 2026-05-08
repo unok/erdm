@@ -77,7 +77,14 @@ func Introspect(ctx context.Context, opts Options) (*model.Schema, error) {
 	}
 
 	known := buildKnownTables(raws)
-	return buildSchema(raws, opts, known)
+	schema, err := buildSchema(raws, opts, known)
+	if err != nil {
+		return nil, err
+	}
+	if !opts.NoInferFK {
+		inferNamingConventionFKs(schema)
+	}
+	return schema, nil
 }
 
 // openDB は driverNames を介して `database/sql.Open` を呼び出す共有ヘルパ。

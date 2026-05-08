@@ -27,17 +27,72 @@ type dotCluster struct {
 	Tables []*model.Table
 }
 
+// edgeColorPalette はエッジ色相の循環パレット。親テーブル名のハッシュ値で
+// 索引して、同一親に紐づく全エッジを同色化することで、複数エッジが同一
+// 折れ点で合流したケースでも色を辿って線の出発点／到達点を追えるようにする
+// （Graphviz `splines=ortho` / `polyline` どちらでも合流の視認性問題が
+// 起きるため）。
+//
+// 採用色は D3/matplotlib tab10 を踏襲した識別性の高い 10 色。背景白前提で
+// 視認性が低い淡黄系は除外している。
+var edgeColorPalette = []string{
+	"#1f77b4", // blue
+	"#ff7f0e", // orange
+	"#2ca02c", // green
+	"#d62728", // red
+	"#9467bd", // purple
+	"#8c564b", // brown
+	"#e377c2", // pink
+	"#7f7f7f", // gray
+	"#17becf", // cyan
+	"#bcbd22", // olive
+}
+
+// pickEdgeColor は親テーブル名から決定論的に色を選ぶ。FNV-1a を使い、追加・
+// 削除に対しても他テーブルの色割当てを壊さないよう、テーブル名単独のハッシュを
+// 使用する（テーブル間の隣接関係には依存させない）。
+func pickEdgeColor(parentTableName string) string {
+	const fnvOffset = uint32(2166136261)
+	const fnvPrime = uint32(16777619)
+	h := fnvOffset
+	for i := 0; i < len(parentTableName); i++ {
+		h ^= uint32(parentTableName[i])
+		h *= fnvPrime
+	}
+	return edgeColorPalette[h%uint32(len(edgeColorPalette))]
+}
+
 // dotEdge は親 → 子方向に正規化した FK エッジ。
 //
 // 矢尾（tail）= 親（参照される側 = FK.TargetTable）、
 // 矢頭（head）= 子（FK カラムを持つ側 = カラム所属テーブル）。
 // HeadLabel は子側 cardinality（FK.CardinalitySource）、
 // TailLabel は親側 cardinality（FK.CardinalityDestination）。
+//
+// TailPort / HeadPort は HTML ラベル table 内の `<td port="...">` に対応する
+// ポート名で、エッジを「テーブル枠の縁」かつ「該当カラム行の高さ」から
+// 出すための接続点を指定する。
+//
+// 各カラム行の左右両端には幅 1 の「アンカー td」を配置している
+// （`dot_tables.tmpl`）。port 名は `<列名>__w` / `<列名>__e` の規約で、
+// 左端アンカーは行の西端＝テーブル枠の左縁、右端アンカーは行の東端＝
+// テーブル枠の右縁に張り付く（行の中央セルではないので、エッジが箱の
+// 内部から出る視覚的な違和感を避けられる）。
+//
+//   - HeadPort: 子側 FK 列の `<列名>__w` を採用（左縁から線を受ける）。
+//   - TailPort: 親側 PK 先頭列の `<列名>__e` を採用（右縁から線を出す）。
+//   - 親に PK が無い／FK 参照先が解決できない場合は空文字列とし、テンプレ
+//     側でポート指定なし（テーブル枠全体への接続）にフォールバックする。
 type dotEdge struct {
 	Parent    string
 	Child     string
 	HeadLabel string
 	TailLabel string
+	TailPort  string
+	HeadPort  string
+	// Color は親テーブル名から決定論的に選ばれる識別色。同一親由来のエッジは
+	// 同色になり、合流点で複数エッジが重なっても色で出発点を追える。
+	Color string
 }
 
 // buildView は Schema からビューモデルを派生する。
@@ -100,7 +155,13 @@ func collectUngroupedTables(s *model.Schema) []*model.Table {
 //
 // WithoutErd カラム由来のエッジは除外（要件 1.8）。同一親子間の複数 FK は
 // 各カラムごとに独立 edge として連続して append する（要件 1.7、重複統合なし）。
+//
+// 接続点（ポート）の解決:
+//   - HeadPort: 子側 FK 列名をそのまま採用する。
+//   - TailPort: 親テーブルの先頭 PK 列名を採用する。親が見つからない／PK
+//     未定義の場合は空文字列としてテンプレ側でポート指定をスキップする。
 func buildEdges(s *model.Schema) []dotEdge {
+	pkPortByTable := buildPKPortIndex(s.Tables)
 	var out []dotEdge
 	for ti := range s.Tables {
 		t := &s.Tables[ti]
@@ -109,15 +170,40 @@ func buildEdges(s *model.Schema) []dotEdge {
 			if c.WithoutErd || c.FK == nil {
 				continue
 			}
+			tail := pkPortByTable[c.FK.TargetTable]
+			if tail != "" {
+				tail += "__e"
+			}
 			out = append(out, dotEdge{
 				Parent:    c.FK.TargetTable,
 				Child:     t.Name,
 				HeadLabel: c.FK.CardinalitySource,
 				TailLabel: c.FK.CardinalityDestination,
+				TailPort:  tail,
+				HeadPort:  c.Name + "__w",
+				Color:     pickEdgeColor(c.FK.TargetTable),
 			})
 		}
 	}
 	return out
+}
+
+// buildPKPortIndex は (テーブル名 → 先頭 PK 列名) の索引を作る。PK が無い
+// テーブルはエントリを持たず、呼び出し側は空文字列扱いになる。
+func buildPKPortIndex(tables []model.Table) map[string]string {
+	index := make(map[string]string, len(tables))
+	for ti := range tables {
+		t := &tables[ti]
+		if len(t.PrimaryKeys) == 0 {
+			continue
+		}
+		idx := t.PrimaryKeys[0]
+		if idx < 0 || idx >= len(t.Columns) {
+			continue
+		}
+		index[t.Name] = t.Columns[idx].Name
+	}
+	return index
 }
 
 // sanitizeIdentifier はグループ名を DOT 識別子として安全な形に整える。

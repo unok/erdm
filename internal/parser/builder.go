@@ -123,9 +123,14 @@ func (p *parserBuilder) setUnique() {
 }
 
 // setColumnDefault は現在のカラムにデフォルト値式を設定する。
+//
+// `[=...]` の値部分は文法上 `\]` を `]` のエスケープとして許容するため、
+// モデルへ書き込む前に `\]` → `]` へアンエスケープする。これにより DDL
+// 描画側（internal/ddl）は意味値そのまま（例: `'{}'::integer[]`）を
+// 受け取れ、Serialize 側は再度 `]` を `\]` に戻して書き出す（往復対称）。
 func (p *parserBuilder) setColumnDefault(t string) {
 	tbl := &p.tables[p.currentTableID]
-	tbl.columns[tbl.currentColumnID].defaultExpr = t
+	tbl.columns[tbl.currentColumnID].defaultExpr = strings.ReplaceAll(t, `\]`, `]`)
 }
 
 // setWithoutErd は現在のカラムを ERD 非表示扱い（`-erd` 属性付与）にする。

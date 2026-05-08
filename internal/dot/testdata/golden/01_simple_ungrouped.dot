@@ -1,17 +1,17 @@
 digraph g {
   rankdir=LR;
-  splines=ortho;
-  nodesep=0.8;
-  ranksep=1.2;
+  splines=polyline;
+  nodesep=1.0;
+  ranksep=2.0;
   concentrate=false;
-  node [shape=box,style=rounded,height=0.08,fontname="Noto Sans Mono CJK JP"];
+  node [shape=plaintext,height=0.08,margin="0",fontname="Noto Sans Mono CJK JP"];
 
 
-  users [label = <<table border="0" cellborder="0" cellpadding="0">
-    <tr><td colspan="2"><font face="Ricty-Bold">users</font></td></tr><tr><td align="left">id  int (NN)</td><td>P</td><td></td></tr><tr><td align="left">name  varchar(64) (NN)</td><td></td><td></td></tr></table>>];
+  users [label = <<table border="1" cellborder="0" cellspacing="0" cellpadding="0">
+    <tr><td colspan="5"><font face="Ricty-Bold">users</font></td></tr><tr><td port="id__w"></td><td align="left">id  int (NN)</td><td>P</td><td></td><td port="id__e"></td></tr><tr><td port="name__w"></td><td align="left">name  varchar(64) (NN)</td><td></td><td></td><td port="name__e"></td></tr></table>>];
 
-  posts [label = <<table border="0" cellborder="0" cellpadding="0">
-    <tr><td colspan="2"><font face="Ricty-Bold">posts</font></td></tr><tr><td align="left">id  int (NN)</td><td>P</td><td></td></tr><tr><td align="left">user_id  int (NN)</td><td>F</td><td></td></tr></table>>];
+  posts [label = <<table border="1" cellborder="0" cellspacing="0" cellpadding="0">
+    <tr><td colspan="5"><font face="Ricty-Bold">posts</font></td></tr><tr><td port="id__w"></td><td align="left">id  int (NN)</td><td>P</td><td></td><td port="id__e"></td></tr><tr><td port="user_id__w"></td><td align="left">user_id  int (NN)</td><td>F</td><td></td><td port="user_id__e"></td></tr></table>>];
 
 
 
@@ -19,7 +19,9 @@ digraph g {
     arrowhead = "none"
     headlabel = "0..*"
     taillabel = "1"
+    color = "#bcbd22"
+    fontcolor = "#bcbd22"
   ]
-  users -> posts
+  users:id__e:e -> posts:user_id__w:w
 
 }

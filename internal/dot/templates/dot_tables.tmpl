@@ -1,12 +1,12 @@
 {{define "dot_tables"}}
 {{range $tk, $t := .}}
-  {{.Name}} [label = <<table border="0" cellborder="0" cellpadding="0">
-    <tr><td colspan="2"><font face="Ricty-Bold">
+  {{.Name}} [label = <<table border="1" cellborder="0" cellspacing="0" cellpadding="0">
+    <tr><td colspan="5"><font face="Ricty-Bold">
     {{- if ne .LogicalName ""}}{{.LogicalName}}/{{end}}{{.Name -}}
     </font></td></tr>
     {{- range $k, $c := .Columns}}
     {{- if (not .WithoutErd) -}}
-    <tr><td align="left">
+    <tr><td port="{{.Name}}__w"></td><td align="left">
     {{- if ne .LogicalName ""}}{{- .LogicalName}}/{{end}}{{.Name}}  {{.Type}} {{if (and (not .AllowNull) .IsUnique) -}}
     (UNN)
     {{- else if not .AllowNull -}}
@@ -18,5 +18,5 @@
     {{- end}}{{if .FK -}}
     F
     {{- end}}</td><td>
-    {{- range $ik, $iv := .IndexRefs}}I{{$iv}} {{end}}</td></tr>{{end}}{{end}}</table>>];
+    {{- range $ik, $iv := .IndexRefs}}I{{$iv}} {{end}}</td><td port="{{.Name}}__e"></td></tr>{{end}}{{end}}</table>>];
 {{end}}{{end}}

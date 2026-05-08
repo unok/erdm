@@ -1,10 +1,14 @@
 package introspect
 
 import (
+	"database/sql"
 	"reflect"
 	"strings"
 	"testing"
 )
+
+// nullInt は sql.NullInt64 を簡潔に作るヘルパ。テストの可読性向上目的。
+func nullInt(v int64) sql.NullInt64 { return sql.NullInt64{Int64: v, Valid: true} }
 
 // newPostgresIntrospector はスキーマ未指定時に既定 "public" を採用する
 // （要件 3.4）。スケルトン段階でも観測可能な不変条件のため、ここで固定する。
@@ -92,8 +96,9 @@ func TestNormalizePGSerial(t *testing.T) {
 	}
 }
 
-// resolvePGType は USER-DEFINED 型のときだけ udt_name に切り替える
-// （他の型は data_type をそのまま採用する）。
+// resolvePGType は data_type が `USER-DEFINED` / `ARRAY` のときに udt_name を
+// 経由した正規化を行い、それ以外は data_type をそのまま採用する。配列要素は
+// pgArrayElementDisplay で `data_type` 寄りの表示名に揃える。
 func TestResolvePGType(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
@@ -102,16 +107,149 @@ func TestResolvePGType(t *testing.T) {
 		udtName  string
 		want     string
 	}{
+		// USER-DEFINED
 		{name: "user defined falls back to udt", dataType: "USER-DEFINED", udtName: "mood", want: "mood"},
+		{name: "user defined with empty udt is preserved", dataType: "USER-DEFINED", udtName: "", want: "USER-DEFINED"},
+		// 非配列・非ユーザ定義: 短縮対象外は data_type そのまま
 		{name: "integer is preserved", dataType: "integer", udtName: "int4", want: "integer"},
 		{name: "text is preserved", dataType: "text", udtName: "text", want: "text"},
-		{name: "user defined with empty udt is preserved", dataType: "USER-DEFINED", udtName: "", want: "USER-DEFINED"},
+		// 非配列・短縮対象（character varying / timestamp / time）
+		{name: "character varying -> varchar", dataType: "character varying", udtName: "varchar", want: "varchar"},
+		{name: "timestamp without time zone -> timestamp", dataType: "timestamp without time zone", udtName: "timestamp", want: "timestamp"},
+		{name: "timestamp with time zone -> timestamptz", dataType: "timestamp with time zone", udtName: "timestamptz", want: "timestamptz"},
+		{name: "time without time zone -> time", dataType: "time without time zone", udtName: "time", want: "time"},
+		{name: "time with time zone -> timetz", dataType: "time with time zone", udtName: "timetz", want: "timetz"},
+		// ARRAY: 主要ビルトイン型
+		{name: "array of int4 -> integer[]", dataType: "ARRAY", udtName: "_int4", want: "integer[]"},
+		{name: "array of int8 -> bigint[]", dataType: "ARRAY", udtName: "_int8", want: "bigint[]"},
+		{name: "array of int2 -> smallint[]", dataType: "ARRAY", udtName: "_int2", want: "smallint[]"},
+		{name: "array of float4 -> real[]", dataType: "ARRAY", udtName: "_float4", want: "real[]"},
+		{name: "array of float8 -> double precision[]", dataType: "ARRAY", udtName: "_float8", want: "double precision[]"},
+		{name: "array of numeric -> numeric[]", dataType: "ARRAY", udtName: "_numeric", want: "numeric[]"},
+		{name: "array of bool -> boolean[]", dataType: "ARRAY", udtName: "_bool", want: "boolean[]"},
+		{name: "array of varchar -> varchar[]", dataType: "ARRAY", udtName: "_varchar", want: "varchar[]"},
+		{name: "array of bpchar -> character[]", dataType: "ARRAY", udtName: "_bpchar", want: "character[]"},
+		{name: "array of text -> text[]", dataType: "ARRAY", udtName: "_text", want: "text[]"},
+		{name: "array of bytea -> bytea[]", dataType: "ARRAY", udtName: "_bytea", want: "bytea[]"},
+		{name: "array of date -> date[]", dataType: "ARRAY", udtName: "_date", want: "date[]"},
+		{name: "array of time -> time[]", dataType: "ARRAY", udtName: "_time", want: "time[]"},
+		{name: "array of timetz -> timetz[]", dataType: "ARRAY", udtName: "_timetz", want: "timetz[]"},
+		{name: "array of timestamp -> timestamp[]", dataType: "ARRAY", udtName: "_timestamp", want: "timestamp[]"},
+		{name: "array of timestamptz -> timestamptz[]", dataType: "ARRAY", udtName: "_timestamptz", want: "timestamptz[]"},
+		{name: "array of interval -> interval[]", dataType: "ARRAY", udtName: "_interval", want: "interval[]"},
+		{name: "array of uuid -> uuid[]", dataType: "ARRAY", udtName: "_uuid", want: "uuid[]"},
+		{name: "array of json -> json[]", dataType: "ARRAY", udtName: "_json", want: "json[]"},
+		{name: "array of jsonb -> jsonb[]", dataType: "ARRAY", udtName: "_jsonb", want: "jsonb[]"},
+		{name: "array of inet -> inet[]", dataType: "ARRAY", udtName: "_inet", want: "inet[]"},
+		{name: "array of cidr -> cidr[]", dataType: "ARRAY", udtName: "_cidr", want: "cidr[]"},
+		{name: "array of macaddr -> macaddr[]", dataType: "ARRAY", udtName: "_macaddr", want: "macaddr[]"},
+		{name: "array of macaddr8 -> macaddr8[]", dataType: "ARRAY", udtName: "_macaddr8", want: "macaddr8[]"},
+		{name: "array of bit -> bit[]", dataType: "ARRAY", udtName: "_bit", want: "bit[]"},
+		{name: "array of varbit -> bit varying[]", dataType: "ARRAY", udtName: "_varbit", want: "bit varying[]"},
+		{name: "array of money -> money[]", dataType: "ARRAY", udtName: "_money", want: "money[]"},
+		{name: "array of xml -> xml[]", dataType: "ARRAY", udtName: "_xml", want: "xml[]"},
+		{name: "array of tsvector -> tsvector[]", dataType: "ARRAY", udtName: "_tsvector", want: "tsvector[]"},
+		{name: "array of tsquery -> tsquery[]", dataType: "ARRAY", udtName: "_tsquery", want: "tsquery[]"},
+		// ARRAY of USER-DEFINED enum: udt_name=_<enumname>。マップに無いので
+		// `_` だけ剥がして `<enumname>[]` を出す。
+		{name: "array of user defined enum -> mood[]", dataType: "ARRAY", udtName: "_mood", want: "mood[]"},
+		// ARRAY: udt_name 空欄は ARRAY のまま温存（情報損失を可視化する保守的経路）
+		{name: "array with empty udt is preserved", dataType: "ARRAY", udtName: "", want: "ARRAY"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 			if got := resolvePGType(c.dataType, c.udtName); got != c.want {
 				t.Fatalf("resolvePGType(%q,%q) = %q, want %q", c.dataType, c.udtName, got, c.want)
+			}
+		})
+	}
+}
+
+// TestApplyPGTypeModifier は型表記に対する精度／スケール／長さ修飾子の付与を
+// 表駆動で固定する（`varchar(N)` / `numeric(p,s)` / `timestamp(N)` 等）。
+// 配列型（末尾 `[]`）は基底型に修飾子を付けて `[]` を再付与する。
+func TestApplyPGTypeModifier(t *testing.T) {
+	t.Parallel()
+	none := sql.NullInt64{}
+	cases := []struct {
+		name    string
+		typ     string
+		charLen sql.NullInt64
+		numP    sql.NullInt64
+		numS    sql.NullInt64
+		dtP     sql.NullInt64
+		want    string
+	}{
+		// varchar / character: 長さがあれば常に付与
+		{name: "varchar(128)", typ: "varchar", charLen: nullInt(128), want: "varchar(128)"},
+		{name: "varchar without length stays varchar", typ: "varchar", want: "varchar"},
+		{name: "character(8)", typ: "character", charLen: nullInt(8), want: "character(8)"},
+		// numeric / decimal: precision があれば常に付与（scale は NULL を 0 扱い）
+		{name: "numeric(10,2)", typ: "numeric", numP: nullInt(10), numS: nullInt(2), want: "numeric(10,2)"},
+		{name: "numeric(10) -> numeric(10,0)", typ: "numeric", numP: nullInt(10), numS: nullInt(0), want: "numeric(10,0)"},
+		{name: "numeric(10) with NULL scale", typ: "numeric", numP: nullInt(10), want: "numeric(10,0)"},
+		{name: "numeric without precision stays numeric", typ: "numeric", want: "numeric"},
+		{name: "decimal(20,5)", typ: "decimal", numP: nullInt(20), numS: nullInt(5), want: "decimal(20,5)"},
+		// timestamp 系: 既定 6 は省略、それ以外は付与
+		{name: "timestamp default precision is omitted", typ: "timestamp", dtP: nullInt(6), want: "timestamp"},
+		{name: "timestamp(3)", typ: "timestamp", dtP: nullInt(3), want: "timestamp(3)"},
+		{name: "timestamptz(0)", typ: "timestamptz", dtP: nullInt(0), want: "timestamptz(0)"},
+		{name: "time(2)", typ: "time", dtP: nullInt(2), want: "time(2)"},
+		{name: "interval(4)", typ: "interval", dtP: nullInt(4), want: "interval(4)"},
+		// bit: charLen があれば常に付与
+		{name: "bit(8)", typ: "bit", charLen: nullInt(8), want: "bit(8)"},
+		{name: "bit varying(64)", typ: "bit varying", charLen: nullInt(64), want: "bit varying(64)"},
+		// 修飾子対象外型は素通し
+		{name: "integer is unchanged", typ: "integer", numP: nullInt(32), want: "integer"},
+		{name: "boolean is unchanged", typ: "boolean", want: "boolean"},
+		{name: "uuid is unchanged", typ: "uuid", want: "uuid"},
+		// 配列: 基底に修飾子を付けて [] を保持
+		{name: "varchar(128)[]", typ: "varchar[]", charLen: nullInt(128), want: "varchar(128)[]"},
+		{name: "numeric(10,2)[]", typ: "numeric[]", numP: nullInt(10), numS: nullInt(2), want: "numeric(10,2)[]"},
+		{name: "timestamp(3)[]", typ: "timestamp[]", dtP: nullInt(3), want: "timestamp(3)[]"},
+		// 配列で要素の修飾子が NULL（呼び出し側で COALESCE が無効）の場合は無修飾のまま
+		{name: "text[] without any precision stays text[]", typ: "text[]", want: "text[]"},
+	}
+	_ = none // sql.NullInt64{} のゼロ値テスト用に確保（個別ケースの省略パラメータが暗黙に none）。
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			got := applyPGTypeModifier(c.typ, c.charLen, c.numP, c.numS, c.dtP)
+			if got != c.want {
+				t.Fatalf("applyPGTypeModifier(%q,...) = %q, want %q", c.typ, got, c.want)
+			}
+		})
+	}
+}
+
+// TestPGArrayElementDisplay は内部 udt 名（`_<elem>`）→ data_type 寄り表示名の
+// 純粋写像を直接検証する。`_` 抜きの未知名はそのまま返るフォールバックを
+// 含めて固定する。
+func TestPGArrayElementDisplay(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		udt  string
+		want string
+	}{
+		{"_int4", "integer"},
+		{"_int8", "bigint"},
+		{"_varchar", "varchar"},
+		{"_timestamptz", "timestamptz"},
+		{"_timestamp", "timestamp"},
+		{"_timetz", "timetz"},
+		{"_time", "time"},
+		{"_text", "text"},
+		// 未知の独自型は `_` のみ剥がして返す（独自 enum の配列など）
+		{"_mood", "mood"},
+		// 既に `_` 無しでも壊さない（堅牢性）
+		{"int4", "integer"},
+	}
+	for _, c := range cases {
+		t.Run(c.udt, func(t *testing.T) {
+			t.Parallel()
+			if got := pgArrayElementDisplay(c.udt); got != c.want {
+				t.Fatalf("pgArrayElementDisplay(%q) = %q, want %q", c.udt, got, c.want)
 			}
 		})
 	}

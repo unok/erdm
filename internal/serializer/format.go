@@ -103,7 +103,7 @@ func writeColumnFlags(buf *bytes.Buffer, c *model.Column) {
 	}
 	if c.HasDefault() {
 		buf.WriteString("[=")
-		buf.WriteString(c.Default)
+		buf.WriteString(escapeDefaultExpr(c.Default))
 		buf.WriteByte(']')
 	}
 	if c.WithoutErd {
@@ -143,6 +143,17 @@ func writeIndex(buf *bytes.Buffer, idx *model.Index) {
 		buf.WriteString(" unique")
 	}
 	buf.WriteByte('\n')
+}
+
+// escapeDefaultExpr は `[=...]` の値部分に現れる `]` を `\]` にエスケープする。
+//
+// PEG `default` 規則は `'\\]' / (![\r\n\]] .)` の選択で `\]` を `]` のエスケープと
+// 解釈する。Parse 側は setColumnDefault で `\]` → `]` にアンエスケープして意味値
+// を保持しているため、Serialize 側ではここで対称に再エスケープする（要件 7.10
+// の往復冪等性）。PostgreSQL 配列 default `'{}'::integer[]` のような `]` を含む
+// 式を含めて round-trip させるための前提処理。
+func escapeDefaultExpr(v string) string {
+	return strings.ReplaceAll(v, `]`, `\]`)
 }
 
 // formatNameLiteral は論理名を `.erdm` の table_name / column_name 規則で表現する。
