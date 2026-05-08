@@ -1,0 +1,41 @@
+{
+  "id": "root",
+  "label": "multi_fk_to_same_parent",
+  "children": [
+    {
+      "id": "users",
+      "label": "users",
+      "width": 200,
+      "height": 100
+    },
+    {
+      "id": "audit_logs",
+      "label": "audit_logs",
+      "width": 200,
+      "height": 100
+    }
+  ],
+  "edges": [
+    {
+      "id": "fk_audit_logs_actor_id_users",
+      "sources": [
+        "users"
+      ],
+      "targets": [
+        "audit_logs"
+      ]
+    },
+    {
+      "id": "fk_audit_logs_target_id_users",
+      "sources": [
+        "users"
+      ],
+      "targets": [
+        "audit_logs"
+      ]
+    }
+  ],
+  "layoutOptions": {
+    "algorithm": "layered"
+  }
+}

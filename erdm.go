@@ -1,435 +1,399 @@
+// Package main は erdm CLI のエントリポイント。
+//
+// 第 1 引数で render / serve のサブコマンドに振り分ける（design.md §C1）。
+//   - 既定（または `serve` 以外の第 1 引数）: render モード
+//   - `serve`: serve モード（HTTP サーバ。本実装は tasks 6.x）
+//
+// render モードは旧 CLI（`erdm [-output_dir DIR] schema.erdm`）と完全互換で、
+// 既存サンプルからの 5 種出力（`.dot` / `.png` / `.html` / `.pg.sql` / `.sqlite3.sql`）
+// を出力ディレクトリへ生成する（要件 3.5 / 9.1）。
 package main
 
 import (
-	"fmt"
-	"os"
-	"log"
-	"io/ioutil"
-	"reflect"
-	htmltemplate "html/template"
-	"text/template"
-	"os/exec"
-	"strings"
+	"context"
+	"embed"
+	"errors"
 	"flag"
+	"fmt"
+	"io/fs"
+	"os"
+	"os/exec"
 	"path/filepath"
-	"path"
+
+	// DB ドライバの blank import（要件 12.3）。erdm CLI の本番バイナリで
+	// `database/sql.Open("pgx" / "mysql" / "sqlite", ...)` を機能させるため、
+	// 本パッケージ（`main`）と internal/introspect パッケージ以外には
+	// ドライバ依存を持ち込まない。internal/introspect 自身のテストは
+	// driver なしでも完結する経路に絞り込んでいるため、blank import は
+	// 本ファイル 1 箇所に集約する。
+	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/jackc/pgx/v5/stdlib"
+	_ "modernc.org/sqlite"
+
+	"github.com/unok/erdm/internal/ddl"
+	"github.com/unok/erdm/internal/dot"
+	"github.com/unok/erdm/internal/elk"
+	"github.com/unok/erdm/internal/html"
+	"github.com/unok/erdm/internal/introspect"
+	"github.com/unok/erdm/internal/parser"
+	"github.com/unok/erdm/internal/serializer"
+	"github.com/unok/erdm/internal/server"
 )
 
-type TableRelation struct {
-	TableNameReal          string
-	CardinalitySource      string
-	CardinalityDestination string
-}
+// spaDistFS は Vite ビルド成果物（frontend/dist 配下）を単一バイナリへ同梱する
+// 埋め込み FS（要件 5.12 / 9.3）。ビルド前提として `make frontend` 等で
+// `frontend/dist/index.html` および `frontend/dist/assets/*` が生成されている
+// ことを要求する。`//go:embed all:` は dotfile 含めて再帰収集する指示子で、
+// Vite が生成する hash 付きアセットも漏れなく取り込める。
+//
+//go:embed all:frontend/dist
+var spaDistFS embed.FS
 
-type Index struct {
-	Title    string
-	Columns  []string
-	IsUnique bool
-}
-
-type Column struct {
-	TitleReal    string
-	Title        string
-	Type         string
-	AllowNull    bool
-	IsUnique     bool
-	IsPrimaryKey bool
-	IsForeignKey bool
-	Default      string
-	Relation     TableRelation
-	Comments     []string
-	IndexIndexes []int
-	WithoutErd   bool
-}
-
-type Table struct {
-	TitleReal       string
-	Title           string
-	Columns         []Column
-	CurrentColumnId int
-	PrimaryKeys     []int
-	Indexes         []Index
-	CurrentIndexId  int
-}
-
-type ErdM struct {
-	Title          string
-	Tables         []Table
-	CurrentTableId int
-	ImageFilename  string
-	IsError        bool
-}
-
-func openFile(filename string) *os.File {
-	fp, err := os.OpenFile(filename, os.O_RDONLY, 0644)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return fp
-}
-
-func readAll(fp *os.File) []byte {
-	bs, err := ioutil.ReadAll(fp)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return bs
-}
-
-func (e *ErdM) setTitle(t string) {
-	e.Title = t
-}
-
-func (e *ErdM) addTableTitleReal(t string) {
-	e.Tables = append(e.Tables, Table{TitleReal: t})
-	e.CurrentTableId = len(e.Tables) - 1
-}
-
-func (e *ErdM) addTableTitle(t string) {
-	t = strings.Trim(t, "\"")
-	e.Tables[e.CurrentTableId].Title = t
-}
-
-func (e *ErdM) addPrimaryKey(text string) {
-	if (len(text) > 0) {
-		if (in_array(0, e.Tables[e.CurrentTableId].PrimaryKeys)) {
-			e.Tables[e.CurrentTableId].PrimaryKeys = append(e.Tables[e.CurrentTableId].PrimaryKeys, 1)
-		} else {
-			e.Tables[e.CurrentTableId].PrimaryKeys = append(e.Tables[e.CurrentTableId].PrimaryKeys, 0)
-		}
-	} else {
-		e.Tables[e.CurrentTableId].PrimaryKeys = append(e.Tables[e.CurrentTableId].PrimaryKeys, e.Tables[e.CurrentTableId].CurrentColumnId + 1)
-	}
-}
-
-func (e *ErdM) setColumnNameReal(t string) {
-	e.Tables[e.CurrentTableId].Columns = append(e.Tables[e.CurrentTableId].Columns, Column{TitleReal: t, AllowNull: true, IsUnique: false, IsForeignKey: false, WithoutErd: false})
-	e.Tables[e.CurrentTableId].CurrentColumnId = len(e.Tables[e.CurrentTableId].Columns) - 1
-	e.Tables[e.CurrentTableId].Columns[e.Tables[e.CurrentTableId].CurrentColumnId].IsPrimaryKey = e.Tables[e.CurrentTableId].isPrimaryKey(e.Tables[e.CurrentTableId].CurrentColumnId)
-}
-
-func (e *ErdM) setColumnName(t string) {
-	t = strings.Trim(t, "\"")
-	e.Tables[e.CurrentTableId].Columns[e.Tables[e.CurrentTableId].CurrentColumnId].Title = t
-}
-
-func (e *ErdM) addColumnType(t string) {
-	e.Tables[e.CurrentTableId].Columns[e.Tables[e.CurrentTableId].CurrentColumnId].Type = t
-}
-
-func (e *ErdM) setNotNull() {
-	e.Tables[e.CurrentTableId].Columns[e.Tables[e.CurrentTableId].CurrentColumnId].AllowNull = false
-}
-func (e *ErdM) setUnique() {
-	e.Tables[e.CurrentTableId].Columns[e.Tables[e.CurrentTableId].CurrentColumnId].IsUnique = true
-}
-
-func (e *ErdM) setColumnDefault(t string) {
-	e.Tables[e.CurrentTableId].Columns[e.Tables[e.CurrentTableId].CurrentColumnId].Default = t
-}
-func (e *ErdM) setWithoutErd() {
-	e.Tables[e.CurrentTableId].Columns[e.Tables[e.CurrentTableId].CurrentColumnId].WithoutErd = true
-}
-func (e *ErdM) setRelationSource(t string) {
-	e.Tables[e.CurrentTableId].Columns[e.Tables[e.CurrentTableId].CurrentColumnId].Relation.CardinalitySource = t
-	e.Tables[e.CurrentTableId].Columns[e.Tables[e.CurrentTableId].CurrentColumnId].IsForeignKey = true
-}
-
-func (e *ErdM) setRelationDestination(t string) {
-	e.Tables[e.CurrentTableId].Columns[e.Tables[e.CurrentTableId].CurrentColumnId].Relation.CardinalityDestination = t
-}
-
-func (e *ErdM) setRelationTableNameReal(t string) {
-	e.Tables[e.CurrentTableId].Columns[e.Tables[e.CurrentTableId].CurrentColumnId].Relation.TableNameReal = t
-}
-
-func (e *ErdM) addComment(t string) {
-	e.Tables[e.CurrentTableId].Columns[e.Tables[e.CurrentTableId].CurrentColumnId].Comments = append(e.Tables[e.CurrentTableId].Columns[e.Tables[e.CurrentTableId].CurrentColumnId].Comments, t)
-}
-
-func (e *ErdM) setIndexName(t string) {
-	e.Tables[e.CurrentTableId].Indexes = append(e.Tables[e.CurrentTableId].Indexes, Index{Title: t, IsUnique: false})
-	e.Tables[e.CurrentTableId].CurrentIndexId = len(e.Tables[e.CurrentTableId].Indexes) - 1
-}
-
-func (e *ErdM) setUniqueIndex() {
-	e.Tables[e.CurrentTableId].Indexes[e.Tables[e.CurrentTableId].CurrentIndexId].IsUnique = true
-}
-
-func (e *ErdM) setIndexColumn(t string) {
-	e.Tables[e.CurrentTableId].Indexes[e.Tables[e.CurrentTableId].CurrentIndexId].Columns = append(e.Tables[e.CurrentTableId].Indexes[e.Tables[e.CurrentTableId].CurrentIndexId].Columns, t)
-	i, err := e.Tables[e.CurrentTableId].getColumnIndex(t)
-	if err != nil {
-		fmt.Println(err)
-	}
-	e.Tables[e.CurrentTableId].Columns[i].IndexIndexes = append(e.Tables[e.CurrentTableId].Columns[i].IndexIndexes, e.Tables[e.CurrentTableId].CurrentIndexId)
-}
-
-func (t *Table) getColumnIndex(s string) (int, error) {
-	for i, v := range t.Columns {
-		if v.TitleReal == s {
-			return i, nil
-		}
-	}
-	return -1, os.ErrInvalid
-}
-
-func in_array(val interface{}, array interface{}) (exists bool) {
-	exists = false
-
-	switch reflect.TypeOf(array).Kind() {
-	case reflect.Slice:
-		s := reflect.ValueOf(array)
-
-		for i := 0; i < s.Len(); i++ {
-			if reflect.DeepEqual(val, s.Index(i).Interface()) == true {
-				exists = true
-				return
-			}
-		}
-	}
-
-	return
-}
-
-func (t *Table) isPrimaryKey(index int) bool {
-	return in_array(index, t.PrimaryKeys)
-}
-
-func (c *Column) HasDefaultSetting() bool {
-	return len(c.Default) > 0
-}
-
-func (c *Column) HasRelation() bool {
-	return len(c.Relation.TableNameReal) > 0
-}
-
-func (c *Column) HasComment() bool {
-	return len(c.Comments) > 0
-}
-
-func (t *Table) GetPrimaryKeyColumns() string {
-	ps := []string{}
-	for _, pk := range t.PrimaryKeys {
-		ps = append(ps, t.Columns[pk].TitleReal)
-	}
-	return strings.Join(ps, ", ");
-}
-
-func (i *Index) GetIndexColumns() string {
-	return strings.Join(i.Columns, ", ");
-}
-
-func (c *ErdM) Err(pos int, buffer string) {
-	fmt.Println("")
-	a := strings.Split(buffer[:pos], "\n")
-	row := len(a) - 1
-	column := len(a[row]) - 1
-
-	lines := strings.Split(buffer, "\n")
-	for i := row - 5; i <= row; i++ {
-		if i < 0 {
-			i = 0
-		}
-
-		fmt.Println(lines[i])
-	}
-
-	s := ""
-	for i := 0; i <= column; i++ {
-		s += " "
-	}
-	ln := len(strings.Trim(lines[row], " \r\n"))
-	for i := column + 1; i < ln; i++ {
-		s += "~"
-	}
-	fmt.Println(s)
-
-	fmt.Println("error")
-	c.IsError = true
-}
+// 旧 CLI と整合する usage 文字列。`render` サブコマンドが既定動作のため
+// `[render]` ではなく旧形式の表記を維持し、後方互換を読み手に明示する。
+const usageRender = "Usage: erdm [-output_dir DIR] [--format=dot|elk] schema.erdm"
+const usageServe = "Usage: erdm serve [--port=N] [--listen=ADDR] [--no-write] schema.erdm"
+const usageImport = "usage: erdm import --dsn=<DSN> [--driver=postgres|mysql|sqlite] [--out=PATH] [--title=NAME] [--schema=NAME] [--no-infer-fk]"
 
 func main() {
-	// check dot command
-	dot_err := exec.Command("dot", "-?").Run()
-	if dot_err != nil {
-		fmt.Println(dot_err)
-		fmt.Println("Please check a graphviz(dot) setting.")
-		return
-	}
-
-	usage := "Usage: erdm [-output_dir directory_name] erd.erdm"
-
-	// check arguments
-	wd, _ := os.Getwd()
-	output_dir := flag.String("output_dir", wd, "output directory")
-	flag.Parse()
-	if len(flag.Args()) == 0 {
-		fmt.Println(usage)
-		return
-	}
-	input_file := flag.Args()[0]
-	stat, err := os.Stat(input_file)
-	if err != nil {
-		fmt.Println(err)
-		fmt.Println(usage)
-		return
-	}
-	if stat.IsDir() == true {
-		fmt.Println("Please set inputfile: " + input_file)
-		fmt.Println(usage)
-		return
-	}
-
-	stat, err = os.Stat(*output_dir)
-	if err != nil {
-		fmt.Println(err)
-		fmt.Println(usage)
-		return
-	}
-	if stat.IsDir() != true {
-		fmt.Println("Please set output_dir: " + *output_dir)
-		fmt.Println(usage)
-		return
-	}
-
-	f := filepath.Base(input_file)
-	basename := f[:len(f) - len(path.Ext(f))]
-
-	fp := openFile(input_file)
-	content := readAll(fp)
-	parser := &Parser{Buffer: string(content)}
-	parser.Init()
-	err = parser.Parse()
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	parser.Execute()
-
-	dot_string, err := Asset("templates/dot.tmpl")
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	dot_tables_string, err := Asset("templates/dot_tables.tmpl")
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	dot_relations_string, err := Asset("templates/dot_relations.tmpl")
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	html_string, err := Asset("templates/html.tmpl")
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	pg_ddl_string, err := Asset("templates/pg_ddl.tmpl")
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	sqlite3_ddl_string, err := Asset("templates/sqlite3_ddl.tmpl")
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	// dot/SQL は raw text（text/template）。html だけは context-aware に
-	// HTML エスケープしたいので html/template を使う。
-	t, err := template.New("template").Parse(string(dot_string) + string(dot_tables_string) + string(dot_relations_string) + string(pg_ddl_string) + string(sqlite3_ddl_string))
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	htmlT, err := htmltemplate.New("html").Parse(string(html_string))
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	dot_filename := path.Join(*output_dir, basename + ".dot")
-	_, err = os.Stat(dot_filename)
-	if err == nil {
-		if err = os.Remove(dot_filename); err != nil {
-			fmt.Println(err)
-			return
+	args := os.Args[1:]
+	if len(args) > 0 && args[0] == "serve" {
+		if err := runServe(args[1:]); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
 		}
-	}
-	fp, err = os.OpenFile(dot_filename, os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		fmt.Println(err)
 		return
 	}
-	err = t.ExecuteTemplate(fp, "dot", parser.ErdM)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	png_filename := path.Join(*output_dir, basename + ".png")
-	err = exec.Command("dot", "-T", "png", "-o", png_filename, dot_filename).Run()
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	parser.ErdM.ImageFilename = path.Base(png_filename)
-
-	html_filename := path.Join(*output_dir, basename + ".html")
-	_, err = os.Stat(html_filename)
-	if err == nil {
-		if err = os.Remove(html_filename); err != nil {
-			fmt.Println(err)
-			return
+	if len(args) > 0 && args[0] == "import" {
+		if err := runImport(args[1:]); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
 		}
-	}
-	fp, err = os.OpenFile(html_filename, os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		fmt.Println(err)
 		return
 	}
-	err = htmlT.ExecuteTemplate(fp, "html", parser.ErdM)
+	if err := runRender(args); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+// runRender は render モードの引数を解析し、フォーマットに応じて出力経路を分岐させる。
+//
+// 旧 CLI 互換のため `-output_dir DIR`（既定: カレントディレクトリ）と
+// `--format=dot|elk`（既定: `dot`）の両方を受理する。
+func runRender(args []string) error {
+	fs := flag.NewFlagSet("render", flag.ContinueOnError)
+	fs.SetOutput(os.Stderr)
+	wd, err := os.Getwd()
 	if err != nil {
-		fmt.Println(err)
-		return
+		return fmt.Errorf("get working directory: %w", err)
+	}
+	outputDir := fs.String("output_dir", wd, "output directory")
+	format := fs.String("format", "dot", "output format (dot|elk)")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() == 0 {
+		return errors.New(usageRender)
+	}
+	inputPath := fs.Arg(0)
+
+	switch *format {
+	case "dot":
+		return renderDOT(*outputDir, inputPath)
+	case "elk":
+		return renderELK(*outputDir, isFlagExplicit(fs, "output_dir"), inputPath)
+	default:
+		return fmt.Errorf("unknown format: %s", *format)
+	}
+}
+
+// isFlagExplicit は flag.FlagSet 上で name フラグが明示指定されたかを返す。
+//
+// `--format=elk` の出力先判定（design.md §C1）は、`-output_dir` の既定値と
+// 「ユーザーが明示指定した同値」を区別する必要がある。`fs.Visit` は
+// 明示的にセットされたフラグのみを巡回するため、これを利用する。
+func isFlagExplicit(fs *flag.FlagSet, name string) bool {
+	var found bool
+	fs.Visit(func(f *flag.Flag) {
+		if f.Name == name {
+			found = true
+		}
+	})
+	return found
+}
+
+// renderELK は ELK JSON を生成し、`-output_dir` の明示指定有無で
+// 出力先を切り替える（design.md §C1、要件 4.1 / 9.4）。
+//
+// `outputDirExplicit == true` の場合は `<outputDir>/<basename>.elk.json` に
+// 書き出し、`false` の場合は標準出力へ書き出す。`dot` コマンドの存在検査は
+// 行わない（要件 9.4: ELK 形式は Graphviz 不要）。
+func renderELK(outputDir string, outputDirExplicit bool, inputPath string) error {
+	if err := requireFile(inputPath); err != nil {
+		return err
+	}
+	src, err := os.ReadFile(inputPath)
+	if err != nil {
+		return fmt.Errorf("read %s: %w", inputPath, err)
+	}
+	schema, parseErr := parser.Parse(src)
+	if parseErr != nil {
+		return fmt.Errorf("parse %s: %w", inputPath, parseErr)
+	}
+	content, err := elk.Render(schema)
+	if err != nil {
+		return fmt.Errorf("render elk: %w", err)
+	}
+	if !outputDirExplicit {
+		if _, err := os.Stdout.Write(content); err != nil {
+			return fmt.Errorf("write stdout: %w", err)
+		}
+		return nil
+	}
+	if err := requireDir(outputDir); err != nil {
+		return err
+	}
+	basename := stripExt(filepath.Base(inputPath))
+	outPath := filepath.Join(outputDir, basename+".elk.json")
+	if err := os.WriteFile(outPath, content, 0644); err != nil {
+		return fmt.Errorf("write %s: %w", outPath, err)
+	}
+	return nil
+}
+
+// renderDOT は旧 CLI と等価な 5 種出力（DOT/PNG/HTML/PG/SQLite）を出力ディレクトリへ生成する。
+//
+// PNG 生成のために外部 `dot` コマンド（Graphviz）の存在を必須前提とする（要件 9.1）。
+// 不在時は標準エラーへ出力して非ゼロ終了する。
+func renderDOT(outputDir, inputPath string) error {
+	if _, err := exec.LookPath("dot"); err != nil {
+		return fmt.Errorf("dot command not found in PATH; required for --format=dot: %w", err)
+	}
+	if err := requireFile(inputPath); err != nil {
+		return err
+	}
+	if err := requireDir(outputDir); err != nil {
+		return err
 	}
 
-	pgsql_filename := path.Join(*output_dir, basename + ".pg.sql")
-	_, err = os.Stat(pgsql_filename)
-	if err == nil {
-		if err = os.Remove(pgsql_filename); err != nil {
-			fmt.Println(err)
-			return
-		}
-	}
-	fp, err = os.OpenFile(pgsql_filename, os.O_CREATE|os.O_WRONLY, 0644)
+	src, err := os.ReadFile(inputPath)
 	if err != nil {
-		fmt.Println(err)
-		return
+		return fmt.Errorf("read %s: %w", inputPath, err)
 	}
-	err = t.ExecuteTemplate(fp, "pg_ddl", parser.ErdM)
-	if err != nil {
-		fmt.Println(err)
-		return
+	schema, parseErr := parser.Parse(src)
+	if parseErr != nil {
+		return fmt.Errorf("parse %s: %w", inputPath, parseErr)
 	}
 
-	sqlite3_filename := path.Join(*output_dir, basename + ".sqlite3.sql")
-	_, err = os.Stat(sqlite3_filename)
-	if err == nil {
-		if err = os.Remove(sqlite3_filename); err != nil {
-			fmt.Println(err)
-			return
+	basename := stripExt(filepath.Base(inputPath))
+	dotPath := filepath.Join(outputDir, basename+".dot")
+	pngPath := filepath.Join(outputDir, basename+".png")
+	htmlPath := filepath.Join(outputDir, basename+".html")
+	pgPath := filepath.Join(outputDir, basename+".pg.sql")
+	sqlitePath := filepath.Join(outputDir, basename+".sqlite3.sql")
+
+	dotText, err := dot.Render(schema)
+	if err != nil {
+		return fmt.Errorf("render dot: %w", err)
+	}
+	if err := os.WriteFile(dotPath, []byte(dotText), 0644); err != nil {
+		return fmt.Errorf("write %s: %w", dotPath, err)
+	}
+	if err := exec.Command("dot", "-T", "png", "-o", pngPath, dotPath).Run(); err != nil {
+		return fmt.Errorf("dot -T png: %w", err)
+	}
+
+	htmlBytes, err := html.Render(schema, filepath.Base(pngPath))
+	if err != nil {
+		return fmt.Errorf("render html: %w", err)
+	}
+	if err := os.WriteFile(htmlPath, htmlBytes, 0644); err != nil {
+		return fmt.Errorf("write %s: %w", htmlPath, err)
+	}
+
+	pgBytes, err := ddl.RenderPG(schema)
+	if err != nil {
+		return fmt.Errorf("render pg ddl: %w", err)
+	}
+	if err := os.WriteFile(pgPath, pgBytes, 0644); err != nil {
+		return fmt.Errorf("write %s: %w", pgPath, err)
+	}
+
+	sqliteBytes, err := ddl.RenderSQLite(schema)
+	if err != nil {
+		return fmt.Errorf("render sqlite ddl: %w", err)
+	}
+	if err := os.WriteFile(sqlitePath, sqliteBytes, 0644); err != nil {
+		return fmt.Errorf("write %s: %w", sqlitePath, err)
+	}
+	return nil
+}
+
+// runServe は serve サブコマンドの引数を解析し、HTTP サーバを起動する。
+//
+// 引数解析（--port / --listen / --no-write）→ 入力ファイル検査（要件 10.1）→
+// `dot` コマンド検出 → `server.New` で起動時前提チェック → `server.Run` で
+// HTTP リッスン + graceful shutdown（要件 10.4）の流れ。
+func runServe(args []string) error {
+	// FlagSet 変数名を flagSet にしているのは、`io/fs` パッケージ（spaDistFS の
+	// fs.Sub で利用）と短縮名 `fs` がシャドウしないようにするため。
+	flagSet := flag.NewFlagSet("serve", flag.ContinueOnError)
+	flagSet.SetOutput(os.Stderr)
+	port := flagSet.Int("port", 8080, "HTTP listen port")
+	listen := flagSet.String("listen", "127.0.0.1", "HTTP listen address")
+	noWrite := flagSet.Bool("no-write", false, "disable write APIs (read-only mode)")
+	if err := flagSet.Parse(args); err != nil {
+		return err
+	}
+	if flagSet.NArg() == 0 {
+		return errors.New(usageServe)
+	}
+	inputPath := flagSet.Arg(0)
+	if err := requireFile(inputPath); err != nil {
+		return err
+	}
+	// dot コマンドの可否は SVG/PNG エクスポート（tasks 6.4）で 503 判定に使う。
+	// `server.Config.HasDot` へ注入し、API ハンドラ側で参照する。
+	_, hasDotErr := exec.LookPath("dot")
+	hasDot := hasDotErr == nil
+
+	cfg := server.Config{
+		SchemaPath: inputPath,
+		Port:       *port,
+		Listen:     *listen,
+		NoWrite:    *noWrite,
+		HasDot:     hasDot,
+	}
+	// fs.Sub で `frontend/dist` をルート化し、SPA は index.html / assets/... を
+	// FS のルート相対で参照できる状態にする（server.spaIndexFile = "index.html"
+	// および handleAssets の `/assets/` 直下配信が成立する）。
+	spaFS, err := fs.Sub(spaDistFS, "frontend/dist")
+	if err != nil {
+		return fmt.Errorf("spa embed sub: %w", err)
+	}
+	srv, err := server.New(cfg, spaFS)
+	if err != nil {
+		return fmt.Errorf("server init: %w", err)
+	}
+	return srv.Run(context.Background())
+}
+
+// runImport は import サブコマンドの引数を解析し、稼働中の RDBMS から
+// erdm 形式のスキーマを取得・出力する直線パイプラインを構成する。
+//
+// 段階（design.md §"runImport" / 要件 1.1 ～ 1.4 / 8.x / 11.x）:
+//  1. 引数解析（--dsn 必須、--driver / --out / --title / --schema は任意）
+//  2. introspect.Introspect でドライバ確定 → タイトル解決 → 接続 → スキーマ取得
+//  3. Schema.Validate で不変条件検査（違反時はファイル未書き出し / 標準エラー出力）
+//  4. serializer.Serialize で `.erdm` バイト列を生成
+//  5. --out 未指定時は標準出力、指定時は親ディレクトリ存在検査の上ファイル書き出し
+//
+// 失敗時は error を返し、main 側で `os.Exit(1)` に変換する。エラー文言の
+// 生成箇所では原 DSN を露出させない（要件 10.4）。`introspect.Introspect`
+// 内部でマスク済みエラーを返すため、本関数では追加ラップ時に DSN を埋め込まない。
+func runImport(args []string) error {
+	fs := flag.NewFlagSet("import", flag.ContinueOnError)
+	fs.SetOutput(os.Stderr)
+	dsn := fs.String("dsn", "", "DSN of source database (required)")
+	driver := fs.String("driver", "", "driver: postgres|mysql|sqlite (auto-detect if empty)")
+	out := fs.String("out", "", "output file path (stdout if empty)")
+	title := fs.String("title", "", "schema title (defaults to DB name or file base)")
+	schemaName := fs.String("schema", "", "schema name (PostgreSQL/MySQL only)")
+	noInferFK := fs.Bool("no-infer-fk", false, "disable naming-convention FK inference (`<entity>_id` → plural-of-entity table)")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *dsn == "" {
+		return errors.New(usageImport)
+	}
+
+	opts := introspect.Options{
+		Driver:    introspect.Driver(*driver),
+		DSN:       *dsn,
+		Schema:    *schemaName,
+		Title:     *title,
+		NoInferFK: *noInferFK,
+	}
+	schema, err := introspect.Introspect(context.Background(), opts)
+	if err != nil {
+		return err
+	}
+	if err := schema.Validate(); err != nil {
+		return fmt.Errorf("import: validate: %w", err)
+	}
+	data, err := serializer.Serialize(schema)
+	if err != nil {
+		return fmt.Errorf("import: serialize: %w", err)
+	}
+	return writeImportOutput(*out, data)
+}
+
+// writeImportOutput は --out の値に応じて出力経路を切り替える（要件 1.3 / 1.4 /
+// 11.4）。--out が空なら標準出力、指定があれば親ディレクトリ存在検査の上で
+// ファイル書き出しする。
+//
+// 親ディレクトリの Stat 失敗は「不在」と「不在以外（権限不足等）」を区別して
+// 報告する。前者は既存契約どおり `output directory not found:` メッセージで
+// 利用者へ「親 dir を作る／パスを直す」誘導を出し、後者は原因エラーを
+// `%w` でラップして診断性を担保する（PR #24 レビュー指摘）。
+func writeImportOutput(outPath string, content []byte) error {
+	if outPath == "" {
+		if _, err := os.Stdout.Write(content); err != nil {
+			return fmt.Errorf("import: write stdout: %w", err)
 		}
+		return nil
 	}
-	fp, err = os.OpenFile(sqlite3_filename, os.O_CREATE|os.O_WRONLY, 0644)
+	parent := filepath.Dir(outPath)
+	st, err := os.Stat(parent)
 	if err != nil {
-		fmt.Println(err)
-		return
+		if errors.Is(err, fs.ErrNotExist) {
+			return fmt.Errorf("output directory not found: %s", parent)
+		}
+		return fmt.Errorf("import: stat %s: %w", parent, err)
 	}
-	err = t.ExecuteTemplate(fp, "sqlite3_ddl", parser.ErdM)
+	if !st.IsDir() {
+		return fmt.Errorf("import: %s is not a directory", parent)
+	}
+	if err := os.WriteFile(outPath, content, 0644); err != nil {
+		return fmt.Errorf("import: write %s: %w", outPath, err)
+	}
+	return nil
+}
+
+// requireFile は path が存在し、かつディレクトリでない通常ファイルかを検査する。
+// 不在・ディレクトリ・読み取り不可いずれの場合も標準エラー向けに分かりやすい
+// エラーを返す（要件 10.1）。
+func requireFile(path string) error {
+	st, err := os.Stat(path)
 	if err != nil {
-		fmt.Println(err)
-		return
+		return fmt.Errorf("input file: %w", err)
 	}
+	if st.IsDir() {
+		return fmt.Errorf("input file: %s is a directory, want a regular file", path)
+	}
+	return nil
+}
+
+// requireDir は path がディレクトリとして存在することを検査する。
+func requireDir(path string) error {
+	st, err := os.Stat(path)
+	if err != nil {
+		return fmt.Errorf("output_dir: %w", err)
+	}
+	if !st.IsDir() {
+		return fmt.Errorf("output_dir: %s is not a directory", path)
+	}
+	return nil
+}
+
+// stripExt は basename から最後の拡張子を取り除く。`foo.erdm` → `foo`。
+// `filepath.Ext` は `.tar.gz` の `.gz` のみ取れるため、旧 CLI の `path.Ext`
+// 相当の単一拡張子除去を再現する。
+func stripExt(base string) string {
+	ext := filepath.Ext(base)
+	if ext == "" {
+		return base
+	}
+	return base[:len(base)-len(ext)]
 }

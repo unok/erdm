@@ -1,0 +1,22 @@
+{
+  "feature_name": "elk-webui-migration",
+  "created_at": "2026-05-05T06:07:33Z",
+  "updated_at": "2026-05-05T06:40:29Z",
+  "language": "ja",
+  "phase": "tasks-generated",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": true,
+      "approved": false
+    }
+  },
+  "ready_for_implementation": true
+}
