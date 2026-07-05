@@ -333,6 +333,27 @@ func TestApplyFKSourceUnique(t *testing.T) {
 
 // markColumnUnique は最初に一致したカラムにだけ IsUnique=true を立て、
 // 同名カラムが無い場合は何もしない（防御的に panic しない）。
+func TestInsertArrayElementModifier(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		typ  string
+		mod  string
+		want string
+	}{
+		{"varchar[]", "64", "varchar(64)[]"},
+		{"numeric[]", "10,2", "numeric(10,2)[]"},
+		{"integer[]", "", "integer[]"},           // 修飾子なしは不変
+		{"varchar(64)[]", "64", "varchar(64)[]"}, // 既に括弧付きなら二重付与しない
+		{"varchar", "64", "varchar"},             // 配列でなければ不変
+		{"text[]", "", "text[]"},
+	}
+	for _, c := range cases {
+		if got := insertArrayElementModifier(c.typ, c.mod); got != c.want {
+			t.Errorf("insertArrayElementModifier(%q, %q) = %q, want %q", c.typ, c.mod, got, c.want)
+		}
+	}
+}
+
 func TestMarkColumnUnique(t *testing.T) {
 	t.Parallel()
 	cols := []rawColumn{{Name: "a"}, {Name: "b"}}
@@ -419,6 +440,11 @@ func TestPGSQLConstantsCarryRequiredKeywords(t *testing.T) {
 			name: "column comments",
 			sql:  sqlSelectPGColumnComments,
 			want: []string{"pg_attribute", "pg_description", "attisdropped"},
+		},
+		{
+			name: "array element modifiers",
+			sql:  sqlSelectPGArrayElementModifiers,
+			want: []string{"format_type", "pg_attribute", "'%[]'", "substring"},
 		},
 		{
 			name: "primary keys",

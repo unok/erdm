@@ -81,6 +81,29 @@ WHERE c.table_schema = $1
 ORDER BY c.table_name, c.ordinal_position
 `
 
+// sqlSelectPGArrayElementModifiers は配列カラムの要素型修飾子（`varchar(64)[]` の
+// `64`、`numeric(10,2)[]` の `10,2` 等）を取得する SELECT 文。
+//
+// PostgreSQL の `information_schema.element_types` は配列要素の base 型は返すが
+// 長さ・精度（typmod）を NULL にする仕様のため、そこからは復元できない。
+// `pg_catalog.format_type(atttypid, atttypmod)` は `character varying(64)[]` の
+// ように修飾子込みの正準表記を返すので、その先頭の括弧内文字列を要素修飾子として
+// 取り出す。デフォルト typmod（例: `timestamp` の精度 6）は format_type が省くため、
+// 既存の「既定値は出力しない」方針とも自然に一致する。配列以外・修飾子なし配列は
+// 対象外（本 map に載らず、既存の型解決がそのまま使われる）。
+const sqlSelectPGArrayElementModifiers = `
+SELECT c.relname, a.attname,
+       substring(format_type(a.atttypid, a.atttypmod) from '\(([^)]*)\)') AS element_modifier
+FROM pg_catalog.pg_attribute a
+JOIN pg_catalog.pg_class c ON c.oid = a.attrelid
+JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname = $1
+  AND c.relkind IN ('r', 'p')
+  AND a.attnum > 0 AND NOT a.attisdropped
+  AND format_type(a.atttypid, a.atttypmod) LIKE '%[]'
+  AND substring(format_type(a.atttypid, a.atttypmod) from '\(([^)]*)\)') IS NOT NULL
+`
+
 // sqlSelectPGColumnComments はカラムコメントを `pg_description` から取得する
 // SELECT 文（要件 8.1）。
 //
@@ -284,6 +307,10 @@ func selectPGTableComments(ctx context.Context, tx *sql.Tx, schema string) (map[
 // 単一カラム UNIQUE 性は別段で `applySingleColumnUnique`／単一カラム UNIQUE 制約
 // のマージで補完される（取得段階では UNIQUE 性は未確定）。
 func selectPGColumns(ctx context.Context, tx *sql.Tx, schema string) (map[string][]rawColumn, error) {
+	arrayMods, err := selectPGArrayElementModifiers(ctx, tx, schema)
+	if err != nil {
+		return nil, err
+	}
 	rows, err := tx.QueryContext(ctx, sqlSelectPGColumns, schema)
 	if err != nil {
 		return nil, fmt.Errorf("introspect/postgres: select columns: %w", err)
@@ -299,6 +326,13 @@ func selectPGColumns(ctx context.Context, tx *sql.Tx, schema string) (map[string
 		typ, defOut := normalizePGSerial(r.DataType, r.Default)
 		typ = resolvePGType(typ, r.UDTName)
 		typ = applyPGTypeModifier(typ, r.CharMaxLength, r.NumPrecision, r.NumScale, r.DTPrecision)
+		// 配列カラムは information_schema からは要素修飾子が得られないため、
+		// pg_catalog 由来の修飾子（あれば）を要素型へ付与する。
+		if r.DataType == "ARRAY" {
+			if mod := arrayMods[tableColumnKey{Table: r.Table, Column: r.Name}]; mod != "" {
+				typ = insertArrayElementModifier(typ, mod)
+			}
+		}
 		out[r.Table] = append(out[r.Table], rawColumn{
 			Name:    r.Name,
 			Type:    typ,
@@ -308,6 +342,30 @@ func selectPGColumns(ctx context.Context, tx *sql.Tx, schema string) (map[string
 	}
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("introspect/postgres: select columns: rows: %w", err)
+	}
+	return out, nil
+}
+
+// selectPGArrayElementModifiers は (table, column) -> 要素修飾子（括弧内文字列、
+// 例 "64" / "10,2"）の map を返す。配列でない／修飾子の無いカラムは含まれない。
+func selectPGArrayElementModifiers(ctx context.Context, tx *sql.Tx, schema string) (map[tableColumnKey]string, error) {
+	rows, err := tx.QueryContext(ctx, sqlSelectPGArrayElementModifiers, schema)
+	if err != nil {
+		return nil, fmt.Errorf("introspect/postgres: select array modifiers: %w", err)
+	}
+	defer rows.Close()
+	out := map[tableColumnKey]string{}
+	for rows.Next() {
+		var tbl, col, mod string
+		if err := rows.Scan(&tbl, &col, &mod); err != nil {
+			return nil, fmt.Errorf("introspect/postgres: select array modifiers: scan: %w", err)
+		}
+		if mod != "" {
+			out[tableColumnKey{Table: tbl, Column: col}] = mod
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("introspect/postgres: select array modifiers: rows: %w", err)
 	}
 	return out, nil
 }
