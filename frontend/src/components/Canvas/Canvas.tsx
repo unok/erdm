@@ -16,7 +16,7 @@
 //   - putLayout 失敗時はコンソール出力のみ（UI の閲覧/操作は継続）。閲覧モード
 //     の主目的（描画）が損なわれない方針。
 
-import { useCallback, useEffect, useRef, type JSX } from 'react'
+import { useCallback, useEffect, useMemo, useRef, type JSX } from 'react'
 import ReactFlow, {
   Background,
   Controls,
@@ -27,12 +27,19 @@ import ReactFlow, {
   type Node,
   type NodeDragHandler,
   type NodeMouseHandler,
+  type NodeTypes,
 } from 'reactflow'
 import 'reactflow/dist/style.css'
 import { putLayout } from '../../api'
 import type { Layout, Schema } from '../../model'
+import { GroupBoxNode } from './GroupBoxNode'
+import { GROUP_BOX_NODE_TYPE, computeGroupBoxes, isGroupBoxId } from './groupBoxes'
 
 const SAVE_DEBOUNCE_MS = 500
+
+// nodeTypes は再インスタンス化を避けるためモジュールスコープの安定参照にする
+// （React Flow は毎レンダー新しい nodeTypes を渡すと警告する）。
+const NODE_TYPES: NodeTypes = { [GROUP_BOX_NODE_TYPE]: GroupBoxNode }
 
 export interface CanvasProps {
   schema: Schema
@@ -49,6 +56,12 @@ export function Canvas({ schema, initialLayout, onNodeClick }: CanvasProps): JSX
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
   const debounceTimerRef = useRef<number | null>(null)
+
+  // primary グループの背景枠を現在のテーブル配置から導出し、テーブルノードの
+  // 背面に重ねて描画する。テーブルが動くと nodes が変わり枠も再計算＝追従する。
+  const displayNodes = useMemo(() => {
+    return [...computeGroupBoxes(schema, nodes), ...nodes]
+  }, [schema, nodes])
 
   // schema / initialLayout が更新されたら React Flow の state を同期する。
   // useNodesState は初期値しか拾わないため、Editor 側でテーブル追加/編集して
@@ -67,6 +80,8 @@ export function Canvas({ schema, initialLayout, onNodeClick }: CanvasProps): JSX
       debounceTimerRef.current = null
       const layout: Layout = {}
       for (const n of latestNodes) {
+        // グループ枠は導出ノードなので座標を永続化しない（テーブルのみ保存）。
+        if (isGroupBoxId(n.id)) continue
         layout[n.id] = { x: n.position.x, y: n.position.y }
       }
       void putLayout(layout).catch((err: unknown) => {
@@ -86,6 +101,8 @@ export function Canvas({ schema, initialLayout, onNodeClick }: CanvasProps): JSX
 
   const onNodeClickHandler: NodeMouseHandler = useCallback(
     (_event, node) => {
+      // グループ枠クリックはテーブル選択ではないので無視する。
+      if (isGroupBoxId(node.id)) return
       onNodeClick?.(node.id)
     },
     [onNodeClick],
@@ -102,8 +119,9 @@ export function Canvas({ schema, initialLayout, onNodeClick }: CanvasProps): JSX
 
   return (
     <ReactFlow
-      nodes={nodes}
+      nodes={displayNodes}
       edges={edges}
+      nodeTypes={NODE_TYPES}
       onNodesChange={onNodesChange}
       onEdgesChange={onEdgesChange}
       onNodeDragStop={onNodeDragStop}

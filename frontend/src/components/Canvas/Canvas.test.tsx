@@ -188,6 +188,28 @@ describe('Canvas', () => {
     expect(onNodeClick).toHaveBeenCalledWith('users')
   })
 
+  it('renders primary-group boxes behind table nodes and ignores clicks on them', () => {
+    const onNodeClick = vi.fn()
+    const GROUPED: Schema = {
+      Title: 't',
+      Groups: ['auth'],
+      Tables: [
+        { Name: 'users', LogicalName: '', Columns: [], PrimaryKeys: [], Indexes: [], Groups: ['auth'] },
+      ],
+    }
+    render(
+      <Canvas schema={GROUPED} initialLayout={{ users: { x: 0, y: 0 } }} onNodeClick={onNodeClick} />,
+    )
+    const nodes = JSON.parse(screen.getByTestId('rf-nodes').textContent ?? '[]') as Array<{
+      id: string
+    }>
+    // グループ枠がテーブルより前（背面）に並ぶ。
+    expect(nodes.map((n) => n.id)).toEqual(['group:auth', 'users'])
+    // 先頭（グループ枠）をクリックしても onNodeClick は呼ばれない。
+    screen.getByTestId('rf-click').click()
+    expect(onNodeClick).not.toHaveBeenCalled()
+  })
+
   it('updates nodes/edges when schema or layout props change (Copilot review #5)', () => {
     const SCHEMA_NEXT: Schema = {
       Title: 't',
