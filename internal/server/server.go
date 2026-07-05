@@ -130,6 +130,7 @@ func (s *Server) newMux() *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", s.handleSPA)
 	mux.Handle("/assets/", s.handleAssets())
+	mux.HandleFunc("/api/meta", s.handleMeta)
 	mux.HandleFunc("/api/schema", s.handleSchema)
 	mux.HandleFunc("/api/layout", s.handleLayout)
 	mux.HandleFunc("/api/export/", s.handleExport)

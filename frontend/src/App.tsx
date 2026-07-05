@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type JSX } from 'react'
 import { ReactFlowProvider } from 'reactflow'
-import { ApiError, getLayout, getSchema, putSchema } from './api'
+import { ApiError, getLayout, getMeta, getSchema, putSchema } from './api'
 import { Canvas } from './components/Canvas'
 import { Editor, type SaveStatus } from './components/Editor'
 import { ExportMenu } from './components/ExportMenu'
@@ -36,6 +36,9 @@ export function App(): JSX.Element {
   const [layout, setLayout] = useState<Layout | null>(null)
   const [selectedTableName, setSelectedTableName] = useState<string | null>(null)
   const [saveStatus, setSaveStatus] = useState<SaveStatus>({ kind: 'idle' })
+  // エクスポートのダウンロードファイル名に使うステム名（サーバ起動元の
+  // `.erdm` 由来）。取得失敗時は 'schema' にフォールバックする（issue #29）。
+  const [exportBasename, setExportBasename] = useState<string>('schema')
 
   const draftTimerRef = useRef<number | null>(null)
   // 「直近の schema 変更がユーザー編集由来か」のフラグ。下書き復元やサーバ
@@ -56,6 +59,15 @@ export function App(): JSX.Element {
         setSchema(effective)
         setLayout(merged)
         setLoadStatus({ status: 'ready' })
+        // basename は非必須情報のため、取得失敗は致命的エラーにせず
+        // フォールバック 'schema' のままにする。
+        getMeta()
+          .then((meta) => {
+            if (!cancelled) setExportBasename(meta.basename)
+          })
+          .catch(() => {
+            /* フォールバックを維持 */
+          })
       } catch (err) {
         if (cancelled) return
         setLoadStatus({ status: 'error', message: formatError(err) })
@@ -182,7 +194,7 @@ export function App(): JSX.Element {
           flexShrink: 0,
         }}
       >
-        <ExportMenu basename="schema" />
+        <ExportMenu basename={exportBasename} />
       </aside>
     </div>
   )

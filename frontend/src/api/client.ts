@@ -80,6 +80,21 @@ async function throwIfNotOk(res: Response): Promise<void> {
   }
 }
 
+// ServerMeta は GET /api/meta のレスポンス（Go 側 `metaResponse` に対応）。
+export interface ServerMeta {
+  // basename は起動時に指定された `.erdm` のステム名。エクスポートの
+  // ダウンロードファイル名（`<basename>.pg.sql` など）に使う。
+  basename: string
+}
+
+// getMeta は GET /api/meta を呼び、サーバ側メタ情報を返す（issue #29）。
+export async function getMeta(): Promise<ServerMeta> {
+  const res = await fetch(`${API_BASE}/meta`, { method: 'GET' })
+  await throwIfNotOk(res)
+  const raw = (await res.json()) as Partial<ServerMeta>
+  return { basename: typeof raw.basename === 'string' ? raw.basename : 'schema' }
+}
+
 // getSchema は GET /api/schema を呼び、サーバが json.Encode した
 // `*model.Schema` を Schema 型として返す（要件 5.4）。
 export async function getSchema(): Promise<Schema> {
