@@ -47,6 +47,28 @@ describe('buildElkInput', () => {
     expect(groupNode?.children?.map((m) => m.id)).toEqual(['users'])
     expect(root.children?.some((c) => c.id === 'guests' && !c.children)).toBe(true)
   })
+
+  it('uses raw Table.Name as node id so it matches Layout / mergePositions keys', () => {
+    const root = buildElkInput(schema)
+    const groupNode = root.children?.find((c) => c.id === 'auth')
+    // Table.Name をそのまま id に使う（sanitize しない）。
+    expect(groupNode?.children?.[0]?.id).toBe('users')
+  })
+
+  it('recovers grouped tables even when Schema.Groups is out of sync (draft edit)', () => {
+    // Editor が Table.Groups だけ更新し Schema.Groups が空のままの下書き状態でも、
+    // grouped テーブルが ELK 入力から欠落しないこと（Copilot 指摘）。
+    const draft: Schema = {
+      Title: 't',
+      Groups: [],
+      Tables: [
+        { Name: 'users', LogicalName: '', Columns: [], PrimaryKeys: [], Indexes: [], Groups: ['auth'] },
+      ],
+    }
+    const root = buildElkInput(draft)
+    const groupNode = root.children?.find((c) => c.id === 'auth')
+    expect(groupNode?.children?.map((m) => m.id)).toEqual(['users'])
+  })
 })
 
 describe('extractPositions', () => {

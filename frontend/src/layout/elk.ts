@@ -62,7 +62,7 @@ export function sanitizeId(name: string): string {
 export function buildElkInput(schema: Schema): ElkNode {
   const children: ElkNode[] = []
 
-  for (const name of schema.Groups) {
+  for (const name of effectiveGroupOrder(schema)) {
     const members = schema.Tables.filter((t) => primaryGroup(t) === name).map(
       buildTableNode,
     )
@@ -83,14 +83,44 @@ export function buildElkInput(schema: Schema): ElkNode {
   }
 }
 
+// effectiveGroupOrder は groupNode を並べる primary グループ名の順序を決める。
+//
+// 基本は Schema.Groups の登場順だが、編集中の下書きでは Editor が Table.Groups
+// だけ更新して Schema.Groups が追随していないことがあり得る。その場合でも
+// テーブルから発見した primary グループを（初出順で）末尾に補完し、grouped な
+// テーブルが ELK 入力から欠落して mergePositions が失敗するのを防ぐ。
+function effectiveGroupOrder(schema: Schema): string[] {
+  const seen = new Set<string>()
+  const order: string[] = []
+  const add = (name: string): void => {
+    if (!seen.has(name)) {
+      seen.add(name)
+      order.push(name)
+    }
+  }
+  for (const name of schema.Groups) add(name)
+  for (const t of schema.Tables) {
+    const pg = primaryGroup(t)
+    if (pg !== null) add(pg)
+  }
+  return order
+}
+
 // buildTableNode は Table 1 件を elkjs 互換のノードへ変換する。
+//
+// ノード id は Table.Name をそのまま使う（sanitize しない）。ELK 結果から
+// 復元する Layout のキーおよび Canvas / mergePositions が参照する Table.Name と
+// 一致させ、下書きで一時的に識別子規則外の名前になっても不整合が起きないように
+// する。グループ名だけは任意文字列を取り得るため sanitizeId で id 化する。
 function buildTableNode(t: Schema['Tables'][number]): ElkNode {
-  return { id: sanitizeId(t.Name), width: NODE_WIDTH, height: NODE_HEIGHT }
+  return { id: t.Name, width: NODE_WIDTH, height: NODE_HEIGHT }
 }
 
 // buildEdges は全テーブルを走査して親 → 子方向の FK エッジ列を生成する。
-// WithoutErd カラム由来のエッジは除外（要件 1.8）。ID にカラム名を含めることで
-// 同一親子間の複数 FK でも衝突しない（要件 4.3）。
+// WithoutErd カラム由来のエッジは除外（要件 1.8）。sources/targets は
+// テーブルノード id（= Table.Name）と一致させる。edge id はカラム名を含めて
+// 同一親子間の複数 FK でも衝突しないようにする（要件 4.3、sanitize は id 文字列の
+// 安全化のみに用いる）。
 function buildEdges(schema: Schema): ElkExtendedEdge[] {
   const edges: ElkExtendedEdge[] = []
   for (const t of schema.Tables) {
@@ -99,8 +129,8 @@ function buildEdges(schema: Schema): ElkExtendedEdge[] {
       if (c.FK === null) continue
       edges.push({
         id: `fk_${sanitizeId(t.Name)}_${sanitizeId(c.Name)}_${sanitizeId(c.FK.TargetTable)}`,
-        sources: [sanitizeId(c.FK.TargetTable)],
-        targets: [sanitizeId(t.Name)],
+        sources: [c.FK.TargetTable],
+        targets: [t.Name],
       })
     }
   }
