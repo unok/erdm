@@ -4,8 +4,8 @@
 // 参照不可な状態でパッケージ内に閉じる（design.md §C5「テンプレート所有」）。
 //
 // 出力仕様（要件 1.1〜1.8 / 2.10〜2.12）:
-//   - グラフ既定属性: rankdir=LR / splines=ortho / nodesep=0.8 / ranksep=1.2 /
-//     concentrate=false
+//   - グラフ既定属性: rankdir=LR / splines=polyline / nodesep=1.0 / ranksep=2.0 /
+//     concentrate=false（実際の値は templates/dot.tmpl を正とする）
 //   - エッジ方向: 親（参照される側）→ 子（FK を持つ側）
 //   - 同一親子間の複数 FK は独立エッジとして列挙する（重複統合なし）
 //   - WithoutErd（ERD 非表示）カラムから派生するエッジ・ノード行を除外

@@ -192,10 +192,14 @@ article_tags/"article tag relation table"
 
 ### Grouping (`@groups[...]`)
 
-Tables can be tagged with one or more groups. The first entry is the *primary* group used for cluster rendering; remaining entries are available for badges, filters, and color hints in the Web UI.
+Tables can be tagged with one or more groups. The `@groups[...]` tag is appended
+directly to the table-name line (there is no `table` keyword). The first entry is
+the *primary* group used for DOT cluster rendering; remaining (secondary) entries
+are preserved in the model for planned Web UI use (badges, filters, color hints —
+not yet implemented, see issue #27).
 
 ```text
-table user_orders @groups["Order", "User", "Billing"]
+user_orders @groups["Order", "User", "Billing"]
     +id [bigint][NN][U]
     user_id [bigint][NN] 0..*--1 users
     order_id [bigint][NN] 0..*--1 orders
@@ -211,10 +215,12 @@ erdm/
 ├── internal/
 │   ├── parser/             PEG-based .erdm parser (parser.peg)
 │   ├── model/              Schema / table / FK / group structs
+│   ├── serializer/         model -> .erdm text serializer
 │   ├── dot/                Graphviz DOT renderer
 │   ├── ddl/                PostgreSQL / SQLite DDL renderers
 │   ├── html/               HTML schema reference renderer
 │   ├── elk/                ELK JSON exporter
+│   ├── introspect/         erdm import: live RDBMS schema introspection
 │   ├── layout/             layout.json I/O
 │   └── server/             erdm serve HTTP handlers
 ├── frontend/               Vite + React + TS + React Flow + elkjs SPA
