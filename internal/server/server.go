@@ -87,15 +87,21 @@ func (s *Server) Run(ctx context.Context) error {
 	mux := s.newMux()
 	handler := s.withAccessLog(mux)
 	addr := net.JoinHostPort(s.cfg.Listen, strconv.Itoa(s.cfg.Port))
+	// リスナーを明示的に作り、--port=0（OS 割当）でも実際のバインド先を
+	// 起動ログへ出せるようにする（logStartup は実アドレスを受け取る）。
+	ln, err := net.Listen("tcp", addr)
+	if err != nil {
+		return fmt.Errorf("listen %s: %w", addr, err)
+	}
 	s.server = &http.Server{Addr: addr, Handler: handler}
-	s.logStartup(addr)
+	s.logStartup(ln.Addr().String())
 
 	signalCtx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
 	errCh := make(chan error, 1)
 	go func() {
-		if err := s.server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		if err := s.server.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			errCh <- err
 			return
 		}

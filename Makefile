@@ -125,10 +125,12 @@ clean:
 release: gen frontend verify-frontend
 	@GOX_BIN="$$(command -v gox 2>/dev/null || true)"; \
 	if [ -z "$$GOX_BIN" ]; then \
-		GOX_BIN="$$( $(GO) env GOPATH )/bin/gox"; \
+		GOPATH_FIRST="$$( $(GO) env GOPATH )"; \
+		GOPATH_FIRST="$${GOPATH_FIRST%%:*}"; \
+		GOX_BIN="$$GOPATH_FIRST/bin/gox"; \
 	fi; \
 	if [ ! -x "$$GOX_BIN" ]; then \
-		echo "ERROR: gox not found (checked PATH and $$($(GO) env GOPATH)/bin/gox); install via 'go install github.com/mitchellh/gox@latest'" >&2; \
+		echo "ERROR: gox not found (checked PATH and $$GOX_BIN); install via 'go install github.com/mitchellh/gox@latest'" >&2; \
 		exit 1; \
 	fi; \
 	"$$GOX_BIN" -osarch "$(GOX_TARGETS)" -output "$(BIN_DIR)/{{.Dir}}_{{.OS}}_{{.Arch}}"
