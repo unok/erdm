@@ -33,7 +33,8 @@ import 'reactflow/dist/style.css'
 import { putLayout } from '../../api'
 import type { Layout, Schema } from '../../model'
 import { GroupBoxNode } from './GroupBoxNode'
-import { GROUP_BOX_NODE_TYPE, computeGroupBoxes, isGroupBoxId } from './groupBoxes'
+import { GROUP_BOX_NODE_TYPE, GROUP_BOX_PREFIX, computeGroupBoxes, isGroupBoxId } from './groupBoxes'
+import { dimmedTables } from './highlight'
 import {
   TableNode,
   columnSourceHandleId,
@@ -42,6 +43,12 @@ import {
 } from './TableNode'
 
 const SAVE_DEBOUNCE_MS = 500
+
+// 強調フィルタで非該当ノード・エッジに与える不透明度。
+const DIM_OPACITY = 0.2
+
+// 空集合の安定参照（highlightGroups 未指定時に毎レンダー新規生成しない）。
+const EMPTY_HIGHLIGHT: ReadonlySet<string> = new Set()
 
 // テーブルノードのカスタム種別名。
 const TABLE_NODE_TYPE = 'tableNode'
@@ -60,20 +67,51 @@ export interface CanvasProps {
   // 「いま編集対象に選んだテーブル」を確定するために使う。閲覧モードのみで
   // 利用する場合は省略可能（既存の 7.5 互換）。
   onNodeClick?: (tableName: string) => void
+  // 強調フィルタで選択中のグループ集合。空/未指定なら強調なし（全表示）。
+  highlightGroups?: ReadonlySet<string>
 }
 
-export function Canvas({ schema, initialLayout, onNodeClick }: CanvasProps): JSX.Element {
+export function Canvas({
+  schema,
+  initialLayout,
+  onNodeClick,
+  highlightGroups = EMPTY_HIGHLIGHT,
+}: CanvasProps): JSX.Element {
   const initialNodes = buildNodes(schema, initialLayout)
   const initialEdges = buildEdges(schema)
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
   const debounceTimerRef = useRef<number | null>(null)
 
+  // 強調フィルタで淡色化するテーブル名集合。
+  const dimmed = useMemo(
+    () => dimmedTables(schema, new Set(highlightGroups)),
+    [schema, highlightGroups],
+  )
+
   // primary グループの背景枠を現在のテーブル配置から導出し、テーブルノードの
   // 背面に重ねて描画する。テーブルが動くと nodes が変わり枠も再計算＝追従する。
+  // 強調フィルタが有効なら非該当のテーブル・グループ枠を淡色化する。
   const displayNodes = useMemo(() => {
-    return [...computeGroupBoxes(schema, nodes), ...nodes]
-  }, [schema, nodes])
+    const filterActive = highlightGroups.size > 0
+    const boxes = computeGroupBoxes(schema, nodes).map((b) => {
+      const groupName = b.id.slice(GROUP_BOX_PREFIX.length)
+      const dim = filterActive && !highlightGroups.has(groupName)
+      return withOpacity(b, dim)
+    })
+    const tables = nodes.map((n) => withOpacity(n, dimmed.has(n.id)))
+    return [...boxes, ...tables]
+  }, [schema, nodes, dimmed, highlightGroups])
+
+  // 端点のどちらかが淡色化されるエッジも淡色化する。
+  const displayEdges = useMemo(() => {
+    if (dimmed.size === 0) return edges
+    return edges.map((e) =>
+      dimmed.has(e.source) || dimmed.has(e.target)
+        ? { ...e, style: { ...e.style, opacity: DIM_OPACITY } }
+        : e,
+    )
+  }, [edges, dimmed])
 
   // schema / initialLayout が更新されたら React Flow の state を同期する。
   // useNodesState は初期値しか拾わないため、Editor 側でテーブル追加/編集して
@@ -132,7 +170,7 @@ export function Canvas({ schema, initialLayout, onNodeClick }: CanvasProps): JSX
   return (
     <ReactFlow
       nodes={displayNodes}
-      edges={edges}
+      edges={displayEdges}
       nodeTypes={NODE_TYPES}
       onNodesChange={onNodesChange}
       onEdgesChange={onEdgesChange}
@@ -145,6 +183,12 @@ export function Canvas({ schema, initialLayout, onNodeClick }: CanvasProps): JSX
       <MiniMap />
     </ReactFlow>
   )
+}
+
+// withOpacity はノードに淡色化（または解除）の style を付与した複製を返す。
+// 元 style（グループ枠の width/height 等）は保持する。
+function withOpacity(node: Node, dim: boolean): Node {
+  return { ...node, style: { ...node.style, opacity: dim ? DIM_OPACITY : 1 } }
 }
 
 function buildNodes(schema: Schema, layout: Layout): Node[] {

@@ -11,7 +11,7 @@
 
 import type { JSX } from 'react'
 import { Handle, Position, type NodeProps } from 'reactflow'
-import type { Column, Table } from '../../model'
+import { type Column, type Table, secondaryGroups } from '../../model'
 
 export interface TableNodeData {
   table: Table
@@ -76,6 +76,9 @@ export function TableNode({ data }: NodeProps<TableNodeData>): JSX.Element {
     >
       <div
         style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
           padding: '4px 8px',
           fontWeight: 700,
           background: '#f2f2f2',
@@ -85,7 +88,26 @@ export function TableNode({ data }: NodeProps<TableNodeData>): JSX.Element {
           whiteSpace: 'nowrap',
         }}
       >
-        {tableLabel(table)}
+        <span style={{ flex: 1 }}>{tableLabel(table)}</span>
+        {/* secondary グループはレイアウトに影響しない（primary のみ枠になる）ため、
+            所属をノード上のバッジで示す。 */}
+        {secondaryGroups(table).map((g) => (
+          <span
+            key={g}
+            title={`group: ${g}`}
+            style={{
+              fontSize: 10,
+              fontWeight: 600,
+              color: '#3a5',
+              background: '#e6f4ea',
+              border: '1px solid #bfe3ca',
+              borderRadius: 3,
+              padding: '0 4px',
+            }}
+          >
+            {g}
+          </span>
+        ))}
       </div>
       {/* 可視カラムが無い縮退テーブルでもエッジが接続できるようフォールバック
           ハンドルを用意する（通常は各カラム行のハンドルを使う）。 */}

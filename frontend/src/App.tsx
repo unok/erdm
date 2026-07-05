@@ -4,8 +4,9 @@ import { ApiError, getLayout, getMeta, getSchema, putSchema } from './api'
 import { Canvas } from './components/Canvas'
 import { Editor, type SaveStatus } from './components/Editor'
 import { ExportMenu } from './components/ExportMenu'
+import { GroupFilter } from './components/GroupFilter'
 import { computeLayout, mergePositions } from './layout'
-import type { Layout, Schema } from './model'
+import { allGroupNames, type Layout, type Schema } from './model'
 import { serialize } from './serializer'
 import { clearDraft, loadDraft, saveDraft } from './storage'
 
@@ -39,6 +40,8 @@ export function App(): JSX.Element {
   // エクスポートのダウンロードファイル名に使うステム名（サーバ起動元の
   // `.erdm` 由来）。取得失敗時は 'schema' にフォールバックする（issue #29）。
   const [exportBasename, setExportBasename] = useState<string>('schema')
+  // グループ強調フィルタで選択中のグループ集合（空なら強調なし、issue #27）。
+  const [highlightGroups, setHighlightGroups] = useState<Set<string>>(new Set())
 
   const draftTimerRef = useRef<number | null>(null)
   // 「直近の schema 変更がユーザー編集由来か」のフラグ。下書き復元やサーバ
@@ -165,6 +168,7 @@ export function App(): JSX.Element {
             schema={schema}
             initialLayout={layout}
             onNodeClick={handleSelectedTableNameChange}
+            highlightGroups={highlightGroups}
           />
         </ReactFlowProvider>
       </div>
@@ -195,6 +199,11 @@ export function App(): JSX.Element {
         }}
       >
         <ExportMenu basename={exportBasename} />
+        <GroupFilter
+          groups={allGroupNames(schema)}
+          highlighted={highlightGroups}
+          onChange={setHighlightGroups}
+        />
       </aside>
     </div>
   )
