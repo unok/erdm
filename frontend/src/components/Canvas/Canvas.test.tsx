@@ -95,8 +95,22 @@ const SCHEMA: Schema = {
     {
       Name: 'users',
       LogicalName: '会員',
-      Columns: [],
-      PrimaryKeys: [],
+      Columns: [
+        {
+          Name: 'id',
+          LogicalName: '',
+          Type: 'bigint',
+          AllowNull: false,
+          IsUnique: true,
+          IsPrimaryKey: true,
+          Default: '',
+          Comments: [],
+          WithoutErd: false,
+          FK: null,
+          IndexRefs: [],
+        },
+      ],
+      PrimaryKeys: [0],
       Indexes: [],
       Groups: [],
     },
@@ -175,10 +189,16 @@ describe('Canvas', () => {
       id: string
       source: string
       target: string
+      sourceHandle?: string
+      targetHandle?: string
     }>
     expect(edges).toHaveLength(1)
     expect(edges[0]?.source).toBe('users')
     expect(edges[0]?.target).toBe('orders')
+    // 親側は users の PK 列（id）、子側は orders の FK 列（user_id）にアンカー。
+    // SCHEMA の users は PK 指定が無いため先頭可視列 id を採用する。
+    expect(edges[0]?.sourceHandle).toBe('s:id')
+    expect(edges[0]?.targetHandle).toBe('t:user_id')
   })
 
   it('invokes onNodeClick with the table name', () => {
