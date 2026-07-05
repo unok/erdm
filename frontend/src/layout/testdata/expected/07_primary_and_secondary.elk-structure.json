@@ -1,0 +1,18 @@
+{
+  "groups": [
+    {
+      "id": "core",
+      "tables": [
+        "users",
+        "events"
+      ]
+    }
+  ],
+  "ungrouped": [],
+  "edges": [
+    {
+      "source": "users",
+      "target": "events"
+    }
+  ]
+}

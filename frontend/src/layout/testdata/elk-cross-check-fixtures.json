@@ -1,0 +1,149 @@
+{
+  "01_simple_ungrouped": {
+    "Title": "simple_ungrouped",
+    "Groups": [],
+    "Tables": [
+      {
+        "Name": "users",
+        "Groups": [],
+        "Columns": [
+          { "Name": "id", "WithoutErd": false, "FK": null },
+          { "Name": "name", "WithoutErd": false, "FK": null }
+        ]
+      },
+      {
+        "Name": "posts",
+        "Groups": [],
+        "Columns": [
+          { "Name": "id", "WithoutErd": false, "FK": null },
+          {
+            "Name": "user_id",
+            "WithoutErd": false,
+            "FK": { "TargetTable": "users", "CardinalitySource": "0..*", "CardinalityDestination": "1" }
+          }
+        ]
+      }
+    ]
+  },
+  "02_primary_group_only": {
+    "Title": "primary_group_only",
+    "Groups": ["auth"],
+    "Tables": [
+      {
+        "Name": "users",
+        "Groups": ["auth"],
+        "Columns": [{ "Name": "id", "WithoutErd": false, "FK": null }]
+      },
+      {
+        "Name": "sessions",
+        "Groups": ["auth"],
+        "Columns": [
+          {
+            "Name": "user_id",
+            "WithoutErd": false,
+            "FK": { "TargetTable": "users", "CardinalitySource": "0..*", "CardinalityDestination": "1" }
+          }
+        ]
+      }
+    ]
+  },
+  "03_ungrouped_mixed": {
+    "Title": "ungrouped_mixed",
+    "Groups": ["auth"],
+    "Tables": [
+      {
+        "Name": "users",
+        "Groups": ["auth"],
+        "Columns": [{ "Name": "id", "WithoutErd": false, "FK": null }]
+      },
+      {
+        "Name": "guests",
+        "Groups": [],
+        "Columns": [{ "Name": "token", "WithoutErd": false, "FK": null }]
+      }
+    ]
+  },
+  "04_multi_fk_same_parent": {
+    "Title": "multi_fk_same_parent",
+    "Groups": [],
+    "Tables": [
+      {
+        "Name": "users",
+        "Groups": [],
+        "Columns": [{ "Name": "id", "WithoutErd": false, "FK": null }]
+      },
+      {
+        "Name": "audit_logs",
+        "Groups": [],
+        "Columns": [
+          {
+            "Name": "actor_id",
+            "WithoutErd": false,
+            "FK": { "TargetTable": "users", "CardinalitySource": "0..*", "CardinalityDestination": "1" }
+          },
+          {
+            "Name": "target_id",
+            "WithoutErd": false,
+            "FK": { "TargetTable": "users", "CardinalitySource": "0..*", "CardinalityDestination": "1" }
+          }
+        ]
+      }
+    ]
+  },
+  "05_without_erd_excluded": {
+    "Title": "without_erd_excluded",
+    "Groups": [],
+    "Tables": [
+      {
+        "Name": "users",
+        "Groups": [],
+        "Columns": [{ "Name": "id", "WithoutErd": false, "FK": null }]
+      },
+      {
+        "Name": "legacy",
+        "Groups": [],
+        "Columns": [
+          {
+            "Name": "user_id",
+            "WithoutErd": true,
+            "FK": { "TargetTable": "users", "CardinalitySource": "0..*", "CardinalityDestination": "1" }
+          },
+          { "Name": "note", "WithoutErd": false, "FK": null }
+        ]
+      }
+    ]
+  },
+  "06_group_name_with_space": {
+    "Title": "group_name_with_space",
+    "Groups": ["Order Mgmt"],
+    "Tables": [
+      {
+        "Name": "orders",
+        "Groups": ["Order Mgmt"],
+        "Columns": [{ "Name": "id", "WithoutErd": false, "FK": null }]
+      }
+    ]
+  },
+  "07_primary_and_secondary": {
+    "Title": "primary_and_secondary",
+    "Groups": ["core", "audit"],
+    "Tables": [
+      {
+        "Name": "users",
+        "Groups": ["core", "audit"],
+        "Columns": [{ "Name": "id", "WithoutErd": false, "FK": null }]
+      },
+      {
+        "Name": "events",
+        "Groups": ["core", "audit"],
+        "Columns": [
+          {
+            "Name": "user_id",
+            "WithoutErd": false,
+            "FK": { "TargetTable": "users", "CardinalitySource": "0..*", "CardinalityDestination": "1" }
+          }
+        ]
+      }
+    ]
+  }
+}

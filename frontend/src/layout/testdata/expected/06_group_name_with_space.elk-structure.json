@@ -1,0 +1,12 @@
+{
+  "groups": [
+    {
+      "id": "Order_Mgmt",
+      "tables": [
+        "orders"
+      ]
+    }
+  ],
+  "ungrouped": [],
+  "edges": []
+}

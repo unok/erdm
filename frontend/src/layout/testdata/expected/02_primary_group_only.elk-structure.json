@@ -1,0 +1,18 @@
+{
+  "groups": [
+    {
+      "id": "auth",
+      "tables": [
+        "users",
+        "sessions"
+      ]
+    }
+  ],
+  "ungrouped": [],
+  "edges": [
+    {
+      "source": "users",
+      "target": "sessions"
+    }
+  ]
+}
