@@ -2,6 +2,21 @@ package parser
 
 import "github.com/unok/erdm/internal/model"
 
+// copyStrings / copyInts は JSON エンコード時に nil スライスが null になるのを避ける。
+// encoding/json は nil スライスを null と書き出し、SPA 側で array 前提の .join が
+// 失敗する（空の Groups / Comments など）。
+func copyStrings(s []string) []string {
+	out := make([]string, len(s))
+	copy(out, s)
+	return out
+}
+
+func copyInts(s []int) []int {
+	out := make([]int, len(s))
+	copy(out, s)
+	return out
+}
+
 // toSchema は parserBuilder の中間表現を新しい model.Schema へ変換する。
 // 旧 erdm.go の ErdM/Table/Column フィールド名から新モデル名への対応は
 // design.md §テンプレートと新モデルのフィールド対応表 に従う:
@@ -36,16 +51,16 @@ func (p *parserBuilder) convertTable(t *parserTable) model.Table {
 	for ci := range t.columns {
 		cols = append(cols, convertColumn(&t.columns[ci]))
 	}
-	pks := append([]int(nil), t.primaryKeys...)
+	pks := copyInts(t.primaryKeys)
 	indexes := make([]model.Index, 0, len(t.indexes))
 	for _, idx := range t.indexes {
 		indexes = append(indexes, model.Index{
 			Name:     idx.title,
-			Columns:  append([]string(nil), idx.columns...),
+			Columns:  copyStrings(idx.columns),
 			IsUnique: idx.isUnique,
 		})
 	}
-	groups := append([]string(nil), t.groups...)
+	groups := copyStrings(t.groups)
 	return model.Table{
 		Name:        t.titleReal,
 		LogicalName: t.title,
@@ -75,10 +90,10 @@ func convertColumn(c *parserColumn) model.Column {
 		IsUnique:     c.isUnique,
 		IsPrimaryKey: c.isPrimaryKey,
 		Default:      c.defaultExpr,
-		Comments:     append([]string(nil), c.comments...),
+		Comments:     copyStrings(c.comments),
 		WithoutErd:   c.withoutErd,
 		FK:           fk,
-		IndexRefs:    append([]int(nil), c.indexIndexes...),
+		IndexRefs:    copyInts(c.indexIndexes),
 	}
 }
 
