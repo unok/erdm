@@ -183,18 +183,13 @@ func (p *parserBuilder) setUniqueIndex() {
 // 文法上カラム未定義の名前が来ることは想定していないが、見つからなければ
 // 解析エラーとして parseErr を立てる（旧パーサでは fmt.Println しつつ続行
 // していたが、Fail Fast の方針で構造化エラー化する）。
-func (p *parserBuilder) setIndexColumn(t string) {
+func (p *parserBuilder) setIndexColumn(t string, pos int, buffer string) {
 	tbl := &p.tables[p.currentTableID]
 	tbl.indexes[tbl.currentIndexID].columns = append(tbl.indexes[tbl.currentIndexID].columns, t)
 	idx, ok := tbl.findColumnIndex(t)
 	if !ok {
 		if p.parseErr == nil {
-			p.parseErr = &ParseError{
-				Pos:     0,
-				Line:    1,
-				Column:  1,
-				Message: "index references unknown column: " + t,
-			}
+			p.parseErr = newParseErrorFromRune(pos, buffer, "index references unknown column: "+t)
 		}
 		return
 	}
@@ -204,15 +199,10 @@ func (p *parserBuilder) setIndexColumn(t string) {
 // markGroupsDecl は現在のテーブルに `@groups[...]` 宣言が現れたことを記録する。
 // 文法側で `(groups_decl space*)?` により単一回しか受理しないため、ここに
 // 二度入ることは通常ない。Defense-in-depth として重複検出を残す（要件 2.9）。
-func (p *parserBuilder) markGroupsDecl() {
+func (p *parserBuilder) markGroupsDecl(pos int, buffer string) {
 	tbl := &p.tables[p.currentTableID]
 	if tbl.hasGroupsDecl && p.parseErr == nil {
-		p.parseErr = &ParseError{
-			Pos:     0,
-			Line:    1,
-			Column:  1,
-			Message: "duplicate @groups declaration on table " + tbl.titleReal,
-		}
+		p.parseErr = newParseErrorFromRune(pos, buffer, "duplicate @groups declaration on table "+tbl.titleReal)
 		return
 	}
 	tbl.hasGroupsDecl = true
@@ -228,12 +218,13 @@ func (p *parserBuilder) addGroup(t string) {
 }
 
 // Err は PEG が文法レベルでマッチに失敗した位置を渡してくる際に呼ばれる。
-// pos は失敗位置（バイトオフセット）、buffer は入力全体。最初の 1 件のみ保持。
+// pos は失敗位置（PEG ランタイムのルーンオフセット）、buffer は入力全体。
+// 最初の 1 件のみ保持する。
 func (p *parserBuilder) Err(pos int, buffer string) {
 	if p.parseErr != nil {
 		return
 	}
-	p.parseErr = newParseError(pos, buffer, "syntax error")
+	p.parseErr = newParseErrorFromRune(pos, buffer, "syntax error")
 }
 
 // containsInt は ints の中に v が含まれるかを返す（addPrimaryKey の旧仕様互換用）。

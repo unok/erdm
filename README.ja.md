@@ -192,10 +192,10 @@ article_tags/記事タグ管理
 
 ### グルーピング (`@groups[...]`)
 
-テーブルに 1 つ以上のグループを指定できます。先頭が **primary** グループとして cluster 描画に使われ、残りは Web UI でのバッジ / 色帯 / フィルタ用ヒントとして利用されます。
+テーブルに 1 つ以上のグループを指定できます。`@groups[...]` はテーブル名の行に直接付記します（`table` キーワードはありません）。先頭が **primary** グループとして DOT の cluster 描画に使われ、残り（secondary）はモデルに保持され、Web UI でのバッジ / 色帯 / フィルタ用途を予定しています（未実装、issue #27 参照）。
 
 ```text
-table user_orders @groups["Order", "User", "Billing"]
+user_orders @groups["Order", "User", "Billing"]
     +id [bigint][NN][U]
     user_id [bigint][NN] 0..*--1 users
     order_id [bigint][NN] 0..*--1 orders
@@ -211,10 +211,12 @@ erdm/
 ├── internal/
 │   ├── parser/             PEG ベースの .erdm パーサ（parser.peg）
 │   ├── model/              スキーマ / テーブル / FK / グループの Go 構造体
+│   ├── serializer/         model → .erdm テキストのシリアライザ
 │   ├── dot/                Graphviz DOT 出力
 │   ├── ddl/                PostgreSQL / SQLite DDL 出力
 │   ├── html/               HTML スキーマリファレンス出力
 │   ├── elk/                ELK JSON 出力
+│   ├── introspect/         erdm import: 稼働 RDBMS のスキーマ取り込み
 │   ├── layout/             layout.json の I/O
 │   └── server/             erdm serve の HTTP ハンドラ
 ├── frontend/               Vite + React + TS + React Flow + elkjs の SPA

@@ -412,6 +412,46 @@ func TestParse_SyntaxError_PreservesLineColumn(t *testing.T) {
 	}
 }
 
+// TestParse_IndexUnknownColumn_ReportsPosition は「index が未知カラムを参照」
+// の意味エラーが 1:1 にハードコードされず、実際の該当カラム位置（行・列）を
+// 返すことを確認する（issue #31）。
+func TestParse_IndexUnknownColumn_ReportsPosition(t *testing.T) {
+	src := []byte("# Title: g\n" +
+		"users\n" +
+		"    +id [bigint][NN]\n" +
+		"    index i (missing_col)\n")
+	schema, perr := Parse(src)
+	if perr == nil {
+		t.Fatalf("expected ParseError for unknown index column, got schema=%v", schema)
+	}
+	if !strings.Contains(perr.Message, "index references unknown column: missing_col") {
+		t.Errorf("unexpected message: %q", perr.Message)
+	}
+	// `missing_col` は 4 行目、"    index i (" の直後（1-based 14 列目）から始まる。
+	if perr.Line != 4 || perr.Column != 14 {
+		t.Errorf("position: got Line=%d Column=%d, want Line=4 Column=14 (Pos=%d)",
+			perr.Line, perr.Column, perr.Pos)
+	}
+}
+
+// TestParse_IndexUnknownColumn_MultibytePrecedingLines は、先行行に多バイト文字
+// （日本語）を含む場合でも行番号が正しく算出されることを確認する。PEG の
+// `begin` はルーン単位のため、バイトオフセットへ変換せずに用いると行がずれる
+// （本ケースでは未変換だと Line=2 と誤報告される）。issue #31。
+func TestParse_IndexUnknownColumn_MultibytePrecedingLines(t *testing.T) {
+	src := []byte("# Title: 日本語タイトルです\n" +
+		"users\n" +
+		"    index i (missing_col)\n")
+	schema, perr := Parse(src)
+	if perr == nil {
+		t.Fatalf("expected ParseError, got schema=%v", schema)
+	}
+	if perr.Line != 3 {
+		t.Errorf("multibyte-preceded position: got Line=%d, want Line=3 (Pos=%d, Message=%q)",
+			perr.Line, perr.Pos, perr.Message)
+	}
+}
+
 // TestNewParseError_LineColumn は newParseError が 1-based Line/Column を
 // 正しく算出することを確認する。
 func TestNewParseError_LineColumn(t *testing.T) {

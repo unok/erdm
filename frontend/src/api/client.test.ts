@@ -14,6 +14,7 @@ import {
   exportPNG,
   exportSVG,
   getLayout,
+  getMeta,
   getSchema,
   putLayout,
   putSchema,
@@ -114,6 +115,30 @@ describe('getSchema', () => {
     const col = tbl?.Columns[0]
     expect(col?.Comments).toEqual([])
     expect(col?.IndexRefs).toEqual([])
+  })
+})
+
+describe('getMeta', () => {
+  it('returns basename on 200', async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ basename: 'xix' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    const got = await getMeta()
+    expect(got).toEqual({ basename: 'xix' })
+    expect(fetchMock).toHaveBeenCalledWith('/api/meta', { method: 'GET' })
+  })
+
+  it('falls back to "schema" when basename is missing or non-string', async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({}), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    expect(await getMeta()).toEqual({ basename: 'schema' })
   })
 })
 
