@@ -49,3 +49,22 @@ func newParseError(pos int, buffer, message string) *ParseError {
 		Message: message,
 	}
 }
+
+// newParseErrorFromRune は PEG アクションが渡す `begin`（ルーン単位のオフセット）
+// を入力バイト列のオフセットへ変換してから ParseError を組み立てる。
+//
+// PEG ランタイムの `begin`/`end` は `[]rune` へのインデックスであり、
+// newParseError が期待するバイトオフセットとは、日本語論理名など多バイト文字が
+// 先行する場合にずれる。ここでルーン→バイト変換を挟むことで、多バイトを含む
+// `.erdm` でも行・列が正しく算出される。
+func newParseErrorFromRune(runePos int, buffer, message string) *ParseError {
+	if runePos < 0 {
+		runePos = 0
+	}
+	runes := []rune(buffer)
+	if runePos > len(runes) {
+		runePos = len(runes)
+	}
+	byteOffset := len(string(runes[:runePos]))
+	return newParseError(byteOffset, buffer, message)
+}
