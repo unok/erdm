@@ -85,8 +85,10 @@ func New(cfg Config, spaFS fs.FS) (*Server, error) {
 // ListenAndServe 由来のエラーを優先する。
 func (s *Server) Run(ctx context.Context) error {
 	mux := s.newMux()
+	handler := s.withAccessLog(mux)
 	addr := net.JoinHostPort(s.cfg.Listen, strconv.Itoa(s.cfg.Port))
-	s.server = &http.Server{Addr: addr, Handler: mux}
+	s.server = &http.Server{Addr: addr, Handler: handler}
+	s.logStartup(addr)
 
 	signalCtx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer stop()
