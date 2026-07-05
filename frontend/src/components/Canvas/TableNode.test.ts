@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import type { Column } from '../../model'
-import { columnBadges } from './TableNode'
+import type { Column, Table } from '../../model'
+import { columnBadges, parentAnchorColumn } from './TableNode'
 
 function col(over: Partial<Column>): Column {
   return {
@@ -43,5 +43,30 @@ describe('columnBadges', () => {
 
   it('does not include PK (shown as an icon, not a badge)', () => {
     expect(columnBadges(col({ IsPrimaryKey: true }))).toEqual([])
+  })
+})
+
+function tbl(cols: Column[]): Table {
+  return { Name: 't', LogicalName: '', Columns: cols, PrimaryKeys: [], Indexes: [], Groups: [] }
+}
+
+describe('parentAnchorColumn', () => {
+  it('prefers the first visible primary-key column', () => {
+    const t = tbl([col({ Name: 'a' }), col({ Name: 'id', IsPrimaryKey: true })])
+    expect(parentAnchorColumn(t)).toBe('id')
+  })
+
+  it('falls back to the first visible column when there is no PK', () => {
+    const t = tbl([col({ Name: 'a' }), col({ Name: 'b' })])
+    expect(parentAnchorColumn(t)).toBe('a')
+  })
+
+  it('skips WithoutErd columns', () => {
+    const t = tbl([col({ Name: 'hidden', WithoutErd: true, IsPrimaryKey: true }), col({ Name: 'visible' })])
+    expect(parentAnchorColumn(t)).toBe('visible')
+  })
+
+  it('returns null when there are no visible columns', () => {
+    expect(parentAnchorColumn(tbl([col({ Name: 'hidden', WithoutErd: true })]))).toBeNull()
   })
 })

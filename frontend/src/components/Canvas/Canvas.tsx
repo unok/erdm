@@ -34,7 +34,12 @@ import { putLayout } from '../../api'
 import type { Layout, Schema } from '../../model'
 import { GroupBoxNode } from './GroupBoxNode'
 import { GROUP_BOX_NODE_TYPE, computeGroupBoxes, isGroupBoxId } from './groupBoxes'
-import { TableNode } from './TableNode'
+import {
+  TableNode,
+  columnSourceHandleId,
+  columnTargetHandleId,
+  parentAnchorColumn,
+} from './TableNode'
 
 const SAVE_DEBOUNCE_MS = 500
 
@@ -160,15 +165,25 @@ function buildNodes(schema: Schema, layout: Layout): Node[] {
 }
 
 function buildEdges(schema: Schema): Edge[] {
+  // 親テーブルごとのアンカー列（先頭 PK 等）を事前計算する。
+  const anchorByTable = new Map<string, string | null>()
+  for (const t of schema.Tables) {
+    anchorByTable.set(t.Name, parentAnchorColumn(t))
+  }
+
   const edges: Edge[] = []
   for (const t of schema.Tables) {
     for (const c of t.Columns) {
       if (c.WithoutErd) continue
       if (c.FK === null) continue
+      // 子側は FK 列の行、親側はアンカー列（PK 行）に接続する。
+      const parentAnchor = anchorByTable.get(c.FK.TargetTable) ?? null
       edges.push({
         id: `${c.FK.TargetTable}__${t.Name}__${c.Name}`,
         source: c.FK.TargetTable,
         target: t.Name,
+        sourceHandle: parentAnchor !== null ? columnSourceHandleId(parentAnchor) : undefined,
+        targetHandle: columnTargetHandleId(c.Name),
         label: `${c.FK.CardinalityDestination}--${c.FK.CardinalitySource}`,
       })
     }
