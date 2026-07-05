@@ -85,9 +85,13 @@ export function TableNode({ data }: NodeProps<TableNodeData>): JSX.Element {
                 whiteSpace: 'nowrap',
               }}
             >
-              <span style={{ width: 12, textAlign: 'center' }} aria-label={c.IsPrimaryKey ? 'primary key' : undefined}>
-                {c.IsPrimaryKey ? '🔑' : ''}
-              </span>
+              {c.IsPrimaryKey ? (
+                <span role="img" aria-label="primary key" style={{ width: 12, textAlign: 'center' }}>
+                  🔑
+                </span>
+              ) : (
+                <span aria-hidden="true" style={{ width: 12 }} />
+              )}
               <span style={{ flex: 1 }}>{columnLabel(c)}</span>
               <span style={{ color: '#888' }}>{c.Type}</span>
               {badges.map((b) => (

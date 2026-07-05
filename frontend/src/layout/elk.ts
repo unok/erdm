@@ -21,8 +21,15 @@
 import ELK, { type ElkNode, type ElkExtendedEdge } from 'elkjs/lib/elk.bundled.js'
 import { primaryGroup, type Layout, type Schema } from '../model'
 
-const NODE_WIDTH = 200
-const NODE_HEIGHT = 100
+// テーブルノードの実寸推定に用いる定数。TableNode の描画（ヘッダ／行の高さ、
+// フォントサイズ）と概ね揃えて、カラム数の多いテーブルでも自動配置が重なり
+// にくいようにする。正確な寸法は描画後に React Flow が測るため、ここは概算でよい。
+const HEADER_HEIGHT = 28
+const ROW_HEIGHT = 22
+const CHAR_WIDTH = 7
+const H_CHROME = 44 // アイコン・バッジ・左右パディングの目安
+const MIN_NODE_WIDTH = 160
+const MAX_NODE_WIDTH = 420
 
 const ROOT_LAYOUT_OPTIONS: Record<string, string> = {
   'elk.algorithm': 'layered',
@@ -112,8 +119,30 @@ function effectiveGroupOrder(schema: Schema): string[] {
 // 復元する Layout のキーおよび Canvas / mergePositions が参照する Table.Name と
 // 一致させ、下書きで一時的に識別子規則外の名前になっても不整合が起きないように
 // する。グループ名だけは任意文字列を取り得るため sanitizeId で id 化する。
+//
+// width/height は可変高の TableNode（カラム数依存）に合わせて概算する。固定値の
+// ままだとカラムの多いテーブルで自動配置が重なるため（要件: レイアウト品質）。
 function buildTableNode(t: Schema['Tables'][number]): ElkNode {
-  return { id: t.Name, width: NODE_WIDTH, height: NODE_HEIGHT }
+  const size = estimateTableSize(t)
+  return { id: t.Name, width: size.width, height: size.height }
+}
+
+// estimateTableSize は TableNode の描画サイズを概算する。ERD 非表示カラムは
+// 行に出ないため高さに数えない。幅は最長行の文字数からの目安（正確値は描画後に
+// React Flow が測る）。
+function estimateTableSize(t: Schema['Tables'][number]): { width: number; height: number } {
+  const columns = t.Columns.filter((c) => !c.WithoutErd)
+  const height = HEADER_HEIGHT + Math.max(columns.length, 1) * ROW_HEIGHT
+
+  // 幅推定は概算のため、欠損フィールド（正規化前の疎な入力）にも頑健にする。
+  const labelLen = (name: string, logical: string | undefined): number =>
+    (logical ? logical.length + 3 : 0) + (name?.length ?? 0)
+  let maxLen = labelLen(t.Name, t.LogicalName)
+  for (const c of columns) {
+    maxLen = Math.max(maxLen, labelLen(c.Name, c.LogicalName) + (c.Type?.length ?? 0) + 4)
+  }
+  const width = Math.min(Math.max(maxLen * CHAR_WIDTH + H_CHROME, MIN_NODE_WIDTH), MAX_NODE_WIDTH)
+  return { width, height }
 }
 
 // buildEdges は全テーブルを走査して親 → 子方向の FK エッジ列を生成する。
