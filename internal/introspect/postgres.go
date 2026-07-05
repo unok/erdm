@@ -277,6 +277,25 @@ func applyPGTypeModifier(typ string, charLen, numPrec, numScale, dtPrec sql.Null
 	return base + mod
 }
 
+// insertArrayElementModifier は配列型表記（末尾 `[]`）の要素型へ修飾子を挿入する
+// 純粋関数。mod は括弧内の文字列（例 "64" / "10,2"）。
+//
+//   - `varchar[]`  + "64"    → `varchar(64)[]`
+//   - `numeric[]`  + "10,2"  → `numeric(10,2)[]`
+//
+// typ が `[]` で終わらない、あるいは既に括弧付き（`varchar(64)[]` 等）の場合は
+// 二重付与を避けてそのまま返す。mod が空なら何もしない。
+func insertArrayElementModifier(typ, mod string) string {
+	if mod == "" || !strings.HasSuffix(typ, "[]") {
+		return typ
+	}
+	base := strings.TrimSuffix(typ, "[]")
+	if strings.Contains(base, "(") {
+		return typ
+	}
+	return base + "(" + mod + ")[]"
+}
+
 // pgTypeModifierFor は基底型名（配列の `[]` を剥がした後）に対して付与すべき
 // 修飾子文字列を返す。修飾子が不要な場合は空文字列を返す。
 func pgTypeModifierFor(base string, charLen, numPrec, numScale, dtPrec sql.NullInt64) string {
