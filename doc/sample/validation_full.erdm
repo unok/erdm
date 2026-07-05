@@ -1,0 +1,43 @@
+# Title: Validation Full Sample
+
+users/利用者 @groups["core", "auth"]
+    +id/利用者ID [bigserial][NN][U]
+    login_name/ログイン名 [varchar(64)][NN][U]
+    email/メールアドレス [varchar(256)][NN][U]
+    password [varchar(128)][='********']
+        # bcrypt でハッシュ化して登録
+    role_id/ロールID [bigint][NN] 0..*--1 roles
+    deleted [boolean][NN][=false][-erd]
+    created/作成日時 [timestamp][NN][=CURRENT_TIMESTAMP]
+    updated/更新日時 [timestamp][NN][=CURRENT_TIMESTAMP][-erd]
+    index i_users_email (email) unique
+    index i_users_role_id_login_name (role_id, login_name)
+
+roles/ロール @groups["core", "auth"]
+    +id/ロールID [bigserial][NN][U]
+    code/コード [varchar(32)][NN][U]
+    name [varchar(64)][NN]
+    description [text]
+
+profiles/プロフィール @groups["core"]
+    +id/プロフィールID [bigserial][NN][U]
+    user_id/利用者ID [bigint][NN][U] 0..1--1 users
+    bio [text]
+    avatar_url/アバターURL [varchar(512)]
+
+sessions/セッション @groups["auth", "audit"]
+    +id/セッションID [bigserial][NN][U]
+    user_id/利用者ID [bigint][NN] 0..*--1 users
+    token/トークン [varchar(256)][NN][U]
+    expires_at/有効期限 [timestamp][NN]
+    created/作成日時 [timestamp][NN][=CURRENT_TIMESTAMP]
+    index i_sessions_token (token) unique
+    index i_sessions_user_id_expires_at (user_id, expires_at)
+
+audit_logs/監査ログ @groups["audit"]
+    +id/監査ログID [bigserial][NN][U]
+    actor_user_id/操作者ID [bigint] 0..*--0..1 users
+    action/操作種別 [varchar(64)][NN]
+    target/操作対象 [varchar(256)]
+    occurred_at/発生日時 [timestamp][NN][=CURRENT_TIMESTAMP]
+    index i_audit_logs_actor_action (actor_user_id, action)

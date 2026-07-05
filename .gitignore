@@ -210,3 +210,7 @@ dist/
 .idea/
 test/
 /erdm
+
+# direnv (個人ローカル設定)
+.envrc
+.direnv/

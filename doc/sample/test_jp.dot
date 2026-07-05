@@ -1,0 +1,44 @@
+
+digraph g {
+  node [shape=box,style=rounded,height=0.08,fontname="Noto Sans Mono CJK JP"];
+
+
+  users [label = <<table border="0" cellborder="0" cellpadding="0">
+    <tr><td colspan="2"><font face="Ricty-Bold">会員/users</font></td></tr><tr><td align="left">会員ID/id  bigserial (UNN)</td><td>P</td><td></td></tr><tr><td align="left">ニックネーム/nick_name  varchar(128) (NN)</td><td></td><td></td></tr><tr><td align="left">パスワード/password  varchar(128) </td><td></td><td></td></tr><tr><td align="left">プロフィール/profile  text </td><td></td><td></td></tr></table>>];
+
+  articles [label = <<table border="0" cellborder="0" cellpadding="0">
+    <tr><td colspan="2"><font face="Ricty-Bold">記事/articles</font></td></tr><tr><td align="left">記事ID/id  bigserial (UNN)</td><td>P</td><td></td></tr><tr><td align="left">タイトル/title  varchar(256) (NN)</td><td></td><td></td></tr><tr><td align="left">内容/contents  text (NN)</td><td></td><td></td></tr><tr><td align="left">投稿者/owner_user_id  bigint (NN)</td><td>F</td><td></td></tr></table>>];
+
+  tags [label = <<table border="0" cellborder="0" cellpadding="0">
+    <tr><td colspan="2"><font face="Ricty-Bold">タグ/tags</font></td></tr><tr><td align="left">タグID/id  bigserial (UNN)</td><td>P</td><td></td></tr><tr><td align="left">タグ/name  varchar(256) (UNN)</td><td></td><td></td></tr></table>>];
+
+  article_tags [label = <<table border="0" cellborder="0" cellpadding="0">
+    <tr><td colspan="2"><font face="Ricty-Bold">記事タグ管理/article_tags</font></td></tr><tr><td align="left">id  bigserial (UNN)</td><td>P</td><td></td></tr><tr><td align="left">article_id  bigint (NN)</td><td>F</td><td></td></tr><tr><td align="left">tag_id  bigint (NN)</td><td>F</td><td></td></tr></table>>];
+
+
+
+
+  edge [
+    arrowhead = "none"
+    headlabel = "0..*"
+    taillabel = "1"
+  ]
+  articles -> users
+
+
+  edge [
+    arrowhead = "none"
+    headlabel = "0..*"
+    taillabel = "1"
+  ]
+  article_tags -> users
+
+
+  edge [
+    arrowhead = "none"
+    headlabel = "0..*"
+    taillabel = "1"
+  ]
+  article_tags -> tags
+
+}

@@ -1,0 +1,10 @@
+# Title: Validation Basic Sample
+
+authors/著者
+    +id/著者ID [bigserial][NN][U]
+    name/氏名 [varchar(128)][NN]
+
+books/書籍
+    +id/書籍ID [bigserial][NN][U]
+    title/タイトル [varchar(256)][NN]
+    author_id/著者ID [bigint][NN] 0..*--1 authors

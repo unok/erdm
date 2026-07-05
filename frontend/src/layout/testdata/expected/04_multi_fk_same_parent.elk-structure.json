@@ -1,0 +1,17 @@
+{
+  "groups": [],
+  "ungrouped": [
+    "users",
+    "audit_logs"
+  ],
+  "edges": [
+    {
+      "source": "users",
+      "target": "audit_logs"
+    },
+    {
+      "source": "users",
+      "target": "audit_logs"
+    }
+  ]
+}

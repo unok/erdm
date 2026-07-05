@@ -1,0 +1,21 @@
+{
+  "id": "root",
+  "label": "without_erd_excluded",
+  "children": [
+    {
+      "id": "users",
+      "label": "users",
+      "width": 200,
+      "height": 100
+    },
+    {
+      "id": "legacy",
+      "label": "legacy",
+      "width": 200,
+      "height": 100
+    }
+  ],
+  "layoutOptions": {
+    "algorithm": "layered"
+  }
+}

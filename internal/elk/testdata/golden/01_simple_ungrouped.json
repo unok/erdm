@@ -1,0 +1,32 @@
+{
+  "id": "root",
+  "label": "simple_ungrouped",
+  "children": [
+    {
+      "id": "users",
+      "label": "users",
+      "width": 200,
+      "height": 100
+    },
+    {
+      "id": "posts",
+      "label": "posts",
+      "width": 200,
+      "height": 100
+    }
+  ],
+  "edges": [
+    {
+      "id": "fk_posts_user_id_users",
+      "sources": [
+        "users"
+      ],
+      "targets": [
+        "posts"
+      ]
+    }
+  ],
+  "layoutOptions": {
+    "algorithm": "layered"
+  }
+}

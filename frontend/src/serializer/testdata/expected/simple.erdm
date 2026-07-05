@@ -1,0 +1,5 @@
+# Title: simple
+
+users
+    +id [bigserial][NN][U]
+    name [varchar(128)][NN]

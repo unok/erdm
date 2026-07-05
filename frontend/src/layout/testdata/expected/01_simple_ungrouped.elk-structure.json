@@ -1,0 +1,13 @@
+{
+  "groups": [],
+  "ungrouped": [
+    "users",
+    "posts"
+  ],
+  "edges": [
+    {
+      "source": "users",
+      "target": "posts"
+    }
+  ]
+}

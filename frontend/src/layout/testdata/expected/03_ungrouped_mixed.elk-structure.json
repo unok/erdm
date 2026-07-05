@@ -1,0 +1,14 @@
+{
+  "groups": [
+    {
+      "id": "auth",
+      "tables": [
+        "users"
+      ]
+    }
+  ],
+  "ungrouped": [
+    "guests"
+  ],
+  "edges": []
+}

@@ -1,0 +1,48 @@
+{
+  "id": "root",
+  "label": "primary_and_secondary",
+  "children": [
+    {
+      "id": "core",
+      "label": "core",
+      "children": [
+        {
+          "id": "users",
+          "label": "users",
+          "width": 200,
+          "height": 100,
+          "properties": {
+            "secondaryGroups": [
+              "audit"
+            ]
+          }
+        },
+        {
+          "id": "events",
+          "label": "events",
+          "width": 200,
+          "height": 100,
+          "properties": {
+            "secondaryGroups": [
+              "audit"
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "id": "fk_events_user_id_users",
+      "sources": [
+        "users"
+      ],
+      "targets": [
+        "events"
+      ]
+    }
+  ],
+  "layoutOptions": {
+    "algorithm": "layered"
+  }
+}

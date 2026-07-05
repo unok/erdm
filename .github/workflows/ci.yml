@@ -11,14 +11,57 @@ jobs:
     runs-on: ubuntu-latest
     env:
       TZ: Asia/Tokyo
+      RELEASE: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      - name: Install build tools
-        run: go install github.com/pointlander/peg@v1.0.1
-      - name: Generate parser
-        run: peg erdm.peg
-      - name: Build
-        run: go build ./...
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      - name: Build (gen + frontend + go build)
+        run: make build
+      - name: Test
+        run: make test
+
+  # introspect（erdm import）の実 DB 統合テストを PostgreSQL / MySQL の
+  # サービスコンテナに対して実行する。SQLite は Docker 不要で常時走る。
+  # 統合テストは環境変数 DSN が設定されているときのみ有効になる（#32）。
+  integration:
+    runs-on: ubuntu-latest
+    env:
+      TZ: Asia/Tokyo
+      ERDM_TEST_POSTGRES_DSN: postgres://erdm:erdm@localhost:5432/erdm_test?sslmode=disable
+      ERDM_TEST_MYSQL_DSN: erdm:erdm@tcp(localhost:3306)/erdm_test?parseTime=true
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: erdm
+          POSTGRES_PASSWORD: erdm
+          POSTGRES_DB: erdm_test
+        ports:
+          - 5432:5432
+        options: --health-cmd="pg_isready -U erdm -d erdm_test" --health-interval=10s --health-timeout=5s --health-retries=10
+      mysql:
+        image: mysql:8
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: erdm_test
+          MYSQL_USER: erdm
+          MYSQL_PASSWORD: erdm
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot" --health-interval=10s --health-timeout=5s --health-retries=15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      # introspect パッケージは PEG 生成物・フロント埋め込みに依存しないため、
+      # make build は不要。統合テストのみを直接実行する。
+      - name: Integration tests (introspect, real DB)
+        run: go test -v -run Integration ./internal/introspect/...

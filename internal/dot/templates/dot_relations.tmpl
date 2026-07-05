@@ -1,0 +1,12 @@
+{{define "dot_relations"}}
+{{- range . }}
+
+  edge [
+    arrowhead = "none"
+    headlabel = "{{.HeadLabel}}"
+    taillabel = "{{.TailLabel}}"
+    color = "{{.Color}}"
+    fontcolor = "{{.Color}}"
+  ]
+  {{.Parent}}{{if .TailPort}}:{{.TailPort}}:e{{end}} -> {{.Child}}{{if .HeadPort}}:{{.HeadPort}}:w{{end}}
+{{end}}{{end}}

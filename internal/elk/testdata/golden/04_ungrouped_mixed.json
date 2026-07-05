@@ -1,0 +1,27 @@
+{
+  "id": "root",
+  "label": "ungrouped_mixed",
+  "children": [
+    {
+      "id": "auth",
+      "label": "auth",
+      "children": [
+        {
+          "id": "users",
+          "label": "users",
+          "width": 200,
+          "height": 100
+        }
+      ]
+    },
+    {
+      "id": "guests",
+      "label": "guests",
+      "width": 200,
+      "height": 100
+    }
+  ],
+  "layoutOptions": {
+    "algorithm": "layered"
+  }
+}

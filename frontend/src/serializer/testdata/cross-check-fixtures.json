@@ -1,0 +1,287 @@
+{
+  "simple": {
+    "Title": "simple",
+    "Groups": [],
+    "Tables": [
+      {
+        "Name": "users",
+        "LogicalName": "",
+        "Columns": [
+          {
+            "Name": "id",
+            "LogicalName": "",
+            "Type": "bigserial",
+            "AllowNull": false,
+            "IsUnique": true,
+            "IsPrimaryKey": true,
+            "Default": "",
+            "Comments": [],
+            "WithoutErd": false,
+            "FK": null,
+            "IndexRefs": []
+          },
+          {
+            "Name": "name",
+            "LogicalName": "",
+            "Type": "varchar(128)",
+            "AllowNull": false,
+            "IsUnique": false,
+            "IsPrimaryKey": false,
+            "Default": "",
+            "Comments": [],
+            "WithoutErd": false,
+            "FK": null,
+            "IndexRefs": []
+          }
+        ],
+        "PrimaryKeys": [0],
+        "Indexes": [],
+        "Groups": []
+      }
+    ]
+  },
+  "with-groups": {
+    "Title": "with groups",
+    "Groups": ["core", "audit"],
+    "Tables": [
+      {
+        "Name": "users",
+        "LogicalName": "site user master",
+        "Columns": [
+          {
+            "Name": "id",
+            "LogicalName": "member id",
+            "Type": "bigserial",
+            "AllowNull": false,
+            "IsUnique": true,
+            "IsPrimaryKey": true,
+            "Default": "",
+            "Comments": [],
+            "WithoutErd": false,
+            "FK": null,
+            "IndexRefs": []
+          }
+        ],
+        "PrimaryKeys": [0],
+        "Indexes": [],
+        "Groups": ["core", "audit"]
+      },
+      {
+        "Name": "orders",
+        "LogicalName": "",
+        "Columns": [
+          {
+            "Name": "id",
+            "LogicalName": "",
+            "Type": "bigserial",
+            "AllowNull": false,
+            "IsUnique": true,
+            "IsPrimaryKey": true,
+            "Default": "",
+            "Comments": [],
+            "WithoutErd": false,
+            "FK": null,
+            "IndexRefs": []
+          },
+          {
+            "Name": "user_id",
+            "LogicalName": "",
+            "Type": "bigint",
+            "AllowNull": false,
+            "IsUnique": false,
+            "IsPrimaryKey": false,
+            "Default": "",
+            "Comments": [],
+            "WithoutErd": false,
+            "FK": {
+              "TargetTable": "users",
+              "CardinalitySource": "0..*",
+              "CardinalityDestination": "1"
+            },
+            "IndexRefs": []
+          }
+        ],
+        "PrimaryKeys": [0],
+        "Indexes": [],
+        "Groups": ["core"]
+      }
+    ]
+  },
+  "full": {
+    "Title": "full",
+    "Groups": [],
+    "Tables": [
+      {
+        "Name": "users",
+        "LogicalName": "",
+        "Columns": [
+          {
+            "Name": "id",
+            "LogicalName": "",
+            "Type": "bigserial",
+            "AllowNull": false,
+            "IsUnique": true,
+            "IsPrimaryKey": true,
+            "Default": "",
+            "Comments": [],
+            "WithoutErd": false,
+            "FK": null,
+            "IndexRefs": []
+          },
+          {
+            "Name": "name",
+            "LogicalName": "",
+            "Type": "varchar(128)",
+            "AllowNull": false,
+            "IsUnique": false,
+            "IsPrimaryKey": false,
+            "Default": "''",
+            "Comments": [],
+            "WithoutErd": false,
+            "FK": null,
+            "IndexRefs": [0]
+          },
+          {
+            "Name": "password",
+            "LogicalName": "",
+            "Type": "varchar(128)",
+            "AllowNull": true,
+            "IsUnique": false,
+            "IsPrimaryKey": false,
+            "Default": "'********'",
+            "Comments": ["sha1 でハッシュ化して登録"],
+            "WithoutErd": false,
+            "FK": null,
+            "IndexRefs": []
+          },
+          {
+            "Name": "updated",
+            "LogicalName": "",
+            "Type": "timestamp with time zone",
+            "AllowNull": false,
+            "IsUnique": false,
+            "IsPrimaryKey": false,
+            "Default": "now()",
+            "Comments": [],
+            "WithoutErd": true,
+            "FK": null,
+            "IndexRefs": []
+          }
+        ],
+        "PrimaryKeys": [0],
+        "Indexes": [
+          { "Name": "i_users_name", "Columns": ["name"], "IsUnique": false }
+        ],
+        "Groups": []
+      }
+    ]
+  },
+  "arrays": {
+    "Title": "arrays",
+    "Groups": [],
+    "Tables": [
+      {
+        "Name": "arr",
+        "LogicalName": "",
+        "Columns": [
+          {
+            "Name": "id",
+            "LogicalName": "",
+            "Type": "uuid",
+            "AllowNull": false,
+            "IsUnique": true,
+            "IsPrimaryKey": true,
+            "Default": "",
+            "Comments": [],
+            "WithoutErd": false,
+            "FK": null,
+            "IndexRefs": []
+          },
+          {
+            "Name": "tags",
+            "LogicalName": "",
+            "Type": "text[]",
+            "AllowNull": false,
+            "IsUnique": false,
+            "IsPrimaryKey": false,
+            "Default": "'{}'::text[]",
+            "Comments": [],
+            "WithoutErd": false,
+            "FK": null,
+            "IndexRefs": []
+          },
+          {
+            "Name": "tag_ids",
+            "LogicalName": "",
+            "Type": "integer[]",
+            "AllowNull": false,
+            "IsUnique": false,
+            "IsPrimaryKey": false,
+            "Default": "'{}'::integer[]",
+            "Comments": [],
+            "WithoutErd": false,
+            "FK": null,
+            "IndexRefs": []
+          },
+          {
+            "Name": "titles",
+            "LogicalName": "",
+            "Type": "character varying[]",
+            "AllowNull": false,
+            "IsUnique": false,
+            "IsPrimaryKey": false,
+            "Default": "",
+            "Comments": [],
+            "WithoutErd": false,
+            "FK": null,
+            "IndexRefs": []
+          }
+        ],
+        "PrimaryKeys": [0],
+        "Indexes": [],
+        "Groups": []
+      }
+    ]
+  },
+  "compound-pk": {
+    "Title": "compound pk",
+    "Groups": [],
+    "Tables": [
+      {
+        "Name": "uk",
+        "LogicalName": "",
+        "Columns": [
+          {
+            "Name": "a",
+            "LogicalName": "",
+            "Type": "int",
+            "AllowNull": false,
+            "IsUnique": false,
+            "IsPrimaryKey": true,
+            "Default": "",
+            "Comments": [],
+            "WithoutErd": false,
+            "FK": null,
+            "IndexRefs": []
+          },
+          {
+            "Name": "b",
+            "LogicalName": "",
+            "Type": "int",
+            "AllowNull": false,
+            "IsUnique": false,
+            "IsPrimaryKey": true,
+            "Default": "",
+            "Comments": [],
+            "WithoutErd": false,
+            "FK": null,
+            "IndexRefs": []
+          }
+        ],
+        "PrimaryKeys": [0, 1],
+        "Indexes": [],
+        "Groups": []
+      }
+    ]
+  }
+}

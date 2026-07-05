@@ -1,0 +1,9 @@
+# Title: full
+
+users
+    +id [bigserial][NN][U]
+    name [varchar(128)][NN][='']
+    password [varchar(128)][='********']
+     # sha1 でハッシュ化して登録
+    updated [timestamp with time zone][NN][=now()][-erd]
+    index i_users_name (name)

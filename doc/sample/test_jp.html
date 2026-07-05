@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="ja">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>ERサンプル</title>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+        <style>
+            .table-block { margin-bottom: 2rem; }
+            .sidebar { position: sticky; top: 1rem; max-height: calc(100vh - 2rem); overflow-y: auto; }
+        </style>
+    </head>
+    <body>
+        <nav class="navbar navbar-dark bg-dark">
+            <div class="container-fluid">
+                <span class="navbar-brand">ERサンプル</span>
+                <form class="d-flex" role="search" onsubmit="return false;">
+                    <input id="searchKeyword" type="search" class="form-control" placeholder="Search..." aria-label="Search">
+                </form>
+            </div>
+        </nav>
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-md-3 sidebar">
+                    <ul class="nav flex-column">
+                        <li class="nav-item" data-target="table-users">
+                            <a class="nav-link" href="#table-users">users</a>
+                        </li>
+                        <li class="nav-item" data-target="table-articles">
+                            <a class="nav-link" href="#table-articles">articles</a>
+                        </li>
+                        <li class="nav-item" data-target="table-tags">
+                            <a class="nav-link" href="#table-tags">tags</a>
+                        </li>
+                        <li class="nav-item" data-target="table-article_tags">
+                            <a class="nav-link" href="#table-article_tags">article_tags</a>
+                        </li>
+                    </ul>
+                </div>
+                <div class="col-md-9">
+                    <h2>ERD</h2>
+                    <img src="test_jp.png" class="img-fluid" style="max-width: 900px;" alt="ERD"/>
+                    <h2>Table List</h2>
+                    <div class="table-block" id="table-users" data-search="users 会員 id 会員ID bigserial   nick_name ニックネーム varchar(128)   password パスワード varchar(128)   profile プロフィール text  ">
+                        <div class="table-responsive">
+                            <table class="table table-bordered">
+                                <tbody>
+                                    <tr class="table-success">
+                                        <th>Table Name(Logical)</th>
+                                        <th>Table Name(Physical)</th>
+                                    </tr>
+                                    <tr>
+                                        <td>会員</td>
+                                        <td>users</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-striped table-bordered">
+                                <thead>
+                                    <tr class="table-info">
+                                        <th>Column Name<br/>(Logical)</th>
+                                        <th>Column Name<br/>(Physical)</th>
+                                        <th>Type</th>
+                                        <th>PK</th>
+                                        <th>NOT<br/>NULL</th>
+                                        <th>UNIQ</th>
+                                        <th>FK</th>
+                                        <th>Default</th>
+                                        <th>Comment</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td style="white-space: nowrap;">会員ID</td>
+                                        <td style="white-space: nowrap;">id</td>
+                                        <td style="white-space: nowrap;">bigserial</td>
+                                        <td style="text-align: center;">&#9745;</td>
+                                        <td style="text-align: center;">&#9745;</td>
+                                        <td style="text-align: center;">&#9745;</td>
+                                        <td style="white-space: nowrap;"></td>
+                                        <td style="white-space: nowrap;"></td>
+                                        <td style="white-space: nowrap;"></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="white-space: nowrap;">ニックネーム</td>
+                                        <td style="white-space: nowrap;">nick_name</td>
+                                        <td style="white-space: nowrap;">varchar(128)</td>
+                                        <td style="text-align: center;"></td>
+                                        <td style="text-align: center;">&#9745;</td>
+                                        <td style="text-align: center;"></td>
+                                        <td style="white-space: nowrap;"></td>
+                                        <td style="white-space: nowrap;"></td>
+                                        <td style="white-space: nowrap;"></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="white-space: nowrap;">パスワード</td>
+                                        <td style="white-space: nowrap;">password</td>
+                                        <td style="white-space: nowrap;">varchar(128)</td>
+                                        <td style="text-align: center;"></td>
+                                        <td style="text-align: center;"></td>
+                                        <td style="text-align: center;"></td>
+                                        <td style="white-space: nowrap;"></td>
+                                        <td style="white-space: nowrap;"></td>
+                                        <td style="white-space: nowrap;"></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="white-space: nowrap;">プロフィール</td>
+                                        <td style="white-space: nowrap;">profile</td>
+                                        <td style="white-space: nowrap;">text</td>
+                                        <td style="text-align: center;"></td>
+                                        <td style="text-align: center;"></td>
+                                        <td style="text-align: center;"></td>
+                                        <td style="white-space: nowrap;"></td>
+                                        <td style="white-space: nowrap;"></td>
+                                        <td style="white-space: nowrap;"></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="table-block" id="table-articles" data-search="articles 記事 id 記事ID bigserial   title タイトル varchar(256)   contents 内容 text   owner_user_id 投稿者 bigint  users">
+                        <div class="table-responsive">
+                            <table class="table table-bordered">
+                                <tbody>
+                                    <tr class="table-success">
+                                        <th>Table Name(Logical)</th>
+                                        <th>Table Name(Physical)</th>
+                                    </tr>
+                                    <tr>
+                                        <td>記事</td>
+                                        <td>articles</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-striped table-bordered">
+                                <thead>
+                                    <tr class="table-info">
+                                        <th>Column Name<br/>(Logical)</th>
+                                        <th>Column Name<br/>(Physical)</th>
+                                        <th>Type</th>
+                                        <th>PK</th>
+                                        <th>NOT<br/>NULL</th>
+                                        <th>UNIQ</th>
+                                        <th>FK</th>
+                                        <th>Default</th>
+                                        <th>Comment</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td style="white-space: nowrap;">記事ID</td>
+                                        <td style="white-space: nowrap;">id</td>
+                                        <td style="white-space: nowrap;">bigserial</td>
+                                        <td style="text-align: center;">&#9745;</td>
+                                        <td style="text-align: center;">&#9745;</td>
+                                        <td style="text-align: center;">&#9745;</td>
+                                        <td style="white-space: nowrap;"></td>
+                                        <td style="white-space: nowrap;"></td>
+                                        <td style="white-space: nowrap;"></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="white-space: nowrap;">タイトル</td>
+                                        <td style="white-space: nowrap;">title</td>
+                                        <td style="white-space: nowrap;">varchar(256)</td>
+                                        <td style="text-align: center;"></td>
+                                        <td style="text-align: center;">&#9745;</td>
+                                        <td style="text-align: center;"></td>
+                                        <td style="white-space: nowrap;"></td>
+                                        <td style="white-space: nowrap;"></td>
+                                        <td style="white-space: nowrap;"></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="white-space: nowrap;">内容</td>
+                                        <td style="white-space: nowrap;">contents</td>
+                                        <td style="white-space: nowrap;">text</td>
+                                        <td style="text-align: center;"></td>
+                                        <td style="text-align: center;">&#9745;</td>
+                                        <td style="text-align: center;"></td>
+                                        <td style="white-space: nowrap;"></td>
+                                        <td style="white-space: nowrap;"></td>
+                                        <td style="white-space: nowrap;"></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="white-space: nowrap;">投稿者</td>
+                                        <td style="white-space: nowrap;">owner_user_id</td>
+                                        <td style="white-space: nowrap;">bigint</td>
+                                        <td style="text-align: center;"></td>
+                                        <td style="text-align: center;">&#9745;</td>
+                                        <td style="text-align: center;"></td>
+                                        <td style="white-space: nowrap;">-&gt;<a href="#table-users">users</a></td>
+                                        <td style="white-space: nowrap;"></td>
+                                        <td style="white-space: nowrap;"></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="table-block" id="table-tags" data-search="tags タグ id タグID bigserial   name タグ varchar(256)  ">
+                        <div class="table-responsive">
+                            <table class="table table-bordered">
+                                <tbody>
+                                    <tr class="table-success">
+                                        <th>Table Name(Logical)</th>
+                                        <th>Table Name(Physical)</th>
+                                    </tr>
+                                    <tr>
+                                        <td>タグ</td>
+                                        <td>tags</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-striped table-bordered">
+                                <thead>
+                                    <tr class="table-info">
+                                        <th>Column Name<br/>(Logical)</th>
+                                        <th>Column Name<br/>(Physical)</th>
+                                        <th>Type</th>
+                                        <th>PK</th>
+                                        <th>NOT<br/>NULL</th>
+                                        <th>UNIQ</th>
+                                        <th>FK</th>
+                                        <th>Default</th>
+                                        <th>Comment</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td style="white-space: nowrap;">タグID</td>
+                                        <td style="white-space: nowrap;">id</td>
+                                        <td style="white-space: nowrap;">bigserial</td>
+                                        <td style="text-align: center;">&#9745;</td>
+                                        <td style="text-align: center;">&#9745;</td>
+                                        <td style="text-align: center;">&#9745;</td>
+                                        <td style="white-space: nowrap;"></td>
+                                        <td style="white-space: nowrap;"></td>
+                                        <td style="white-space: nowrap;"></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="white-space: nowrap;">タグ</td>
+                                        <td style="white-space: nowrap;">name</td>
+                                        <td style="white-space: nowrap;">varchar(256)</td>
+                                        <td style="text-align: center;"></td>
+                                        <td style="text-align: center;">&#9745;</td>
+                                        <td style="text-align: center;">&#9745;</td>
+                                        <td style="white-space: nowrap;"></td>
+                                        <td style="white-space: nowrap;"></td>
+                                        <td style="white-space: nowrap;"></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="table-block" id="table-article_tags" data-search="article_tags 記事タグ管理 id  bigserial   article_id  bigint  users tag_id  bigint  tags">
+                        <div class="table-responsive">
+                            <table class="table table-bordered">
+                                <tbody>
+                                    <tr class="table-success">
+                                        <th>Table Name(Logical)</th>
+                                        <th>Table Name(Physical)</th>
+                                    </tr>
+                                    <tr>
+                                        <td>記事タグ管理</td>
+                                        <td>article_tags</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-striped table-bordered">
+                                <thead>
+                                    <tr class="table-info">
+                                        <th>Column Name<br/>(Logical)</th>
+                                        <th>Column Name<br/>(Physical)</th>
+                                        <th>Type</th>
+                                        <th>PK</th>
+                                        <th>NOT<br/>NULL</th>
+                                        <th>UNIQ</th>
+                                        <th>FK</th>
+                                        <th>Default</th>
+                                        <th>Comment</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td style="white-space: nowrap;"></td>
+                                        <td style="white-space: nowrap;">id</td>
+                                        <td style="white-space: nowrap;">bigserial</td>
+                                        <td style="text-align: center;">&#9745;</td>
+                                        <td style="text-align: center;">&#9745;</td>
+                                        <td style="text-align: center;">&#9745;</td>
+                                        <td style="white-space: nowrap;"></td>
+                                        <td style="white-space: nowrap;"></td>
+                                        <td style="white-space: nowrap;"></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="white-space: nowrap;"></td>
+                                        <td style="white-space: nowrap;">article_id</td>
+                                        <td style="white-space: nowrap;">bigint</td>
+                                        <td style="text-align: center;"></td>
+                                        <td style="text-align: center;">&#9745;</td>
+                                        <td style="text-align: center;"></td>
+                                        <td style="white-space: nowrap;">-&gt;<a href="#table-users">users</a></td>
+                                        <td style="white-space: nowrap;"></td>
+                                        <td style="white-space: nowrap;"></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="white-space: nowrap;"></td>
+                                        <td style="white-space: nowrap;">tag_id</td>
+                                        <td style="white-space: nowrap;">bigint</td>
+                                        <td style="text-align: center;"></td>
+                                        <td style="text-align: center;">&#9745;</td>
+                                        <td style="text-align: center;"></td>
+                                        <td style="white-space: nowrap;">-&gt;<a href="#table-tags">tags</a></td>
+                                        <td style="white-space: nowrap;"></td>
+                                        <td style="white-space: nowrap;"></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <script>
+        (function () {
+            var input = document.getElementById('searchKeyword');
+            if (!input) return;
+            var blocks = document.querySelectorAll('.table-block');
+            input.addEventListener('input', function () {
+                var q = input.value.trim().toLowerCase();
+                blocks.forEach(function (block) {
+                    var hay = (block.dataset.search || '').toLowerCase();
+                    var match = !q || hay.indexOf(q) !== -1;
+                    block.style.display = match ? '' : 'none';
+                    var li = document.querySelector('.sidebar [data-target="' + block.id + '"]');
+                    if (li) li.style.display = match ? '' : 'none';
+                });
+            });
+        })();
+        </script>
+    </body>
+</html>

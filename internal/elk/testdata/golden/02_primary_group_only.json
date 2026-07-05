@@ -1,0 +1,38 @@
+{
+  "id": "root",
+  "label": "primary_group_only",
+  "children": [
+    {
+      "id": "auth",
+      "label": "auth",
+      "children": [
+        {
+          "id": "users",
+          "label": "users",
+          "width": 200,
+          "height": 100
+        },
+        {
+          "id": "sessions",
+          "label": "sessions",
+          "width": 200,
+          "height": 100
+        }
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "id": "fk_sessions_user_id_users",
+      "sources": [
+        "users"
+      ],
+      "targets": [
+        "sessions"
+      ]
+    }
+  ],
+  "layoutOptions": {
+    "algorithm": "layered"
+  }
+}

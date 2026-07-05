@@ -1,0 +1,8 @@
+# Title: with groups
+
+users/"site user master" @groups["core", "audit"]
+    +id/"member id" [bigserial][NN][U]
+
+orders @groups["core"]
+    +id [bigserial][NN][U]
+    user_id [bigint][NN] 0..*--1 users
