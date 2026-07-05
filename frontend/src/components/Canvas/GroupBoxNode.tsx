@@ -11,6 +11,9 @@ export function GroupBoxNode({ data }: NodeProps<{ label: string }>): JSX.Elemen
   return (
     <div
       style={{
+        // ラベルの絶対配置がこの枠を基準になるよう positioned ancestor にする
+        // （React Flow のラッパ DOM 構造に依存しない自己完結）。
+        position: 'relative',
         width: '100%',
         height: '100%',
         boxSizing: 'border-box',

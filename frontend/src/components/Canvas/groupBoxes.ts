@@ -35,22 +35,27 @@ const LABEL_HEIGHT = 22
 export function computeGroupBoxes(schema: Schema, tableNodes: Node[]): Node[] {
   const byName = new Map(tableNodes.map((n) => [n.id, n]))
 
-  // primary グループを初出順で列挙（Schema.Groups 非同期な下書きにも頑健）。
+  // テーブルを 1 パスで走査し、primary グループの初出順（Schema.Groups 非同期な
+  // 下書きにも頑健）とメンバー Node を同時に収集する（グループ×テーブルの
+  // 二重走査を避ける）。
   const order: string[] = []
-  const seen = new Set<string>()
+  const membersByGroup = new Map<string, Node[]>()
   for (const t of schema.Tables) {
     const pg = primaryGroup(t)
-    if (pg !== null && !seen.has(pg)) {
-      seen.add(pg)
+    if (pg === null) continue
+    let members = membersByGroup.get(pg)
+    if (members === undefined) {
+      members = []
+      membersByGroup.set(pg, members)
       order.push(pg)
     }
+    const node = byName.get(t.Name)
+    if (node !== undefined) members.push(node)
   }
 
   const boxes: Node[] = []
   for (const name of order) {
-    const members = schema.Tables.filter((t) => primaryGroup(t) === name)
-      .map((t) => byName.get(t.Name))
-      .filter((n): n is Node => n !== undefined)
+    const members = membersByGroup.get(name) ?? []
     if (members.length === 0) continue
 
     let minX = Infinity
