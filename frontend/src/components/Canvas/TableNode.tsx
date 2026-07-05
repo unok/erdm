@@ -90,8 +90,9 @@ export function TableNode({ data }: NodeProps<TableNodeData>): JSX.Element {
       >
         <span style={{ flex: 1 }}>{tableLabel(table)}</span>
         {/* secondary グループはレイアウトに影響しない（primary のみ枠になる）ため、
-            所属をノード上のバッジで示す。 */}
-        {secondaryGroups(table).map((g) => (
+            所属をノード上のバッジで示す。テーブル内でのグループ名重複
+            （@groups["a","a"] 等）は key 衝突を避けるため描画前に排除する。 */}
+        {[...new Set(secondaryGroups(table))].map((g) => (
           <span
             key={g}
             title={`group: ${g}`}

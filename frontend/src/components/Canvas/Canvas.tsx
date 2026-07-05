@@ -34,7 +34,7 @@ import { putLayout } from '../../api'
 import type { Layout, Schema } from '../../model'
 import { GroupBoxNode } from './GroupBoxNode'
 import { GROUP_BOX_NODE_TYPE, GROUP_BOX_PREFIX, computeGroupBoxes, isGroupBoxId } from './groupBoxes'
-import { dimmedTables } from './highlight'
+import { dimmedTables, isGroupBoxDimmed } from './highlight'
 import {
   TableNode,
   columnSourceHandleId,
@@ -93,15 +93,13 @@ export function Canvas({
   // 背面に重ねて描画する。テーブルが動くと nodes が変わり枠も再計算＝追従する。
   // 強調フィルタが有効なら非該当のテーブル・グループ枠を淡色化する。
   const displayNodes = useMemo(() => {
-    const filterActive = highlightGroups.size > 0
     const boxes = computeGroupBoxes(schema, nodes).map((b) => {
       const groupName = b.id.slice(GROUP_BOX_PREFIX.length)
-      const dim = filterActive && !highlightGroups.has(groupName)
-      return withOpacity(b, dim)
+      return withOpacity(b, isGroupBoxDimmed(schema, groupName, dimmed))
     })
     const tables = nodes.map((n) => withOpacity(n, dimmed.has(n.id)))
     return [...boxes, ...tables]
-  }, [schema, nodes, dimmed, highlightGroups])
+  }, [schema, nodes, dimmed])
 
   // 端点のどちらかが淡色化されるエッジも淡色化する。
   const displayEdges = useMemo(() => {
