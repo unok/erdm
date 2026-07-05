@@ -165,11 +165,11 @@ describe('Canvas', () => {
     render(<Canvas schema={SCHEMA} initialLayout={LAYOUT} />)
     const nodes = JSON.parse(screen.getByTestId('rf-nodes').textContent ?? '[]') as Array<{
       id: string
-      data: { label: string }
+      data: { table: { Name: string } }
     }>
     expect(nodes.map((n) => n.id)).toEqual(['users', 'orders'])
-    // ラベルは LogicalName / Name の両方を含む（"会員 / users"）。
-    expect(nodes[0]?.data.label).toContain('users')
+    // カスタムテーブルノードには Table 実体が data.table として載る。
+    expect(nodes[0]?.data.table.Name).toBe('users')
 
     const edges = JSON.parse(screen.getByTestId('rf-edges').textContent ?? '[]') as Array<{
       id: string
