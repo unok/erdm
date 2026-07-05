@@ -74,6 +74,47 @@ describe('getSchema', () => {
     expect((err as ApiError).status).toBe(502)
     expect((err as ApiError).code).toBe('http_error')
   })
+
+  it('normalizes null JSON array fields (Go nil slices) so UI can call .join safely', async () => {
+    const raw = {
+      Title: 't',
+      Groups: null,
+      Tables: [
+        {
+          Name: 'users',
+          LogicalName: '',
+          Columns: [
+            {
+              Name: 'id',
+              LogicalName: '',
+              Type: 'int',
+              AllowNull: false,
+              IsUnique: false,
+              IsPrimaryKey: true,
+              Default: '',
+              Comments: null,
+              WithoutErd: false,
+              FK: null,
+              IndexRefs: null,
+            },
+          ],
+          PrimaryKeys: null,
+          Indexes: null,
+          Groups: null,
+        },
+      ],
+    }
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify(raw), { status: 200 }))
+    const got = await getSchema()
+    expect(got.Groups).toEqual([])
+    const tbl = got.Tables[0]
+    expect(tbl?.Groups).toEqual([])
+    expect(tbl?.PrimaryKeys).toEqual([])
+    expect(tbl?.Indexes).toEqual([])
+    const col = tbl?.Columns[0]
+    expect(col?.Comments).toEqual([])
+    expect(col?.IndexRefs).toEqual([])
+  })
 })
 
 describe('putSchema', () => {

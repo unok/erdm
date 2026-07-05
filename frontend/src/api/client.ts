@@ -14,7 +14,7 @@
 //   - `PUT /api/layout` は `application/json`（Go 側は `json.Decode`）。
 //   - 認証ヘッダ・CORS 対応は対象外（`erdm serve` はローカル限定 = 127.0.0.1 既定）。
 
-import type { DdlDialect, Layout, Schema } from '../model'
+import { normalizeSchema, type DdlDialect, type Layout, type Schema } from '../model'
 
 // API ベース URL。Vite の dev サーバではプロキシ経由（vite.config.ts）、
 // 本番ビルドでは Go バイナリの SPA 配信と同一オリジンで動作する。
@@ -85,7 +85,7 @@ async function throwIfNotOk(res: Response): Promise<void> {
 export async function getSchema(): Promise<Schema> {
   const res = await fetch(`${API_BASE}/schema`, { method: 'GET' })
   await throwIfNotOk(res)
-  return (await res.json()) as Schema
+  return normalizeSchema((await res.json()) as Schema)
 }
 
 // putSchema は PUT /api/schema にシリアライズ済み `.erdm` テキストを送る

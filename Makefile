@@ -86,8 +86,9 @@ verify-frontend:
 #   `-o erdm .` で実体を必ず作る（README の "make build" と整合させる）。
 # --------------------------------------------------------------------------
 build: gen frontend verify-frontend
-	@echo ">> go build"
+	@echo ">> go build -> ./erdm"
 	@$(GO) build -o erdm .
+	@echo ">> Run: ./erdm serve ...   (bin/erdm_linux_amd64 is from 'make release', not updated by this target)"
 
 # --------------------------------------------------------------------------
 # フロントエンドの単体テスト (Vitest, タスク 7.8)
@@ -122,11 +123,17 @@ clean:
 # クロスコンパイル成果物（旧 build.sh 相当）。gox 必須。
 # --------------------------------------------------------------------------
 release: gen frontend verify-frontend
-	@command -v gox >/dev/null 2>&1 || { \
-		echo "ERROR: gox not found in PATH; install via 'go install github.com/mitchellh/gox@latest'" >&2; \
+	@GOX_BIN="$$(command -v gox 2>/dev/null || true)"; \
+	if [ -z "$$GOX_BIN" ]; then \
+		GOPATH_FIRST="$$( $(GO) env GOPATH )"; \
+		GOPATH_FIRST="$${GOPATH_FIRST%%:*}"; \
+		GOX_BIN="$$GOPATH_FIRST/bin/gox"; \
+	fi; \
+	if [ ! -x "$$GOX_BIN" ]; then \
+		echo "ERROR: gox not found (checked PATH and $$GOX_BIN); install via 'go install github.com/mitchellh/gox@latest'" >&2; \
 		exit 1; \
-	}
-	@gox -osarch "$(GOX_TARGETS)" -output "$(BIN_DIR)/{{.Dir}}_{{.OS}}_{{.Arch}}"
+	fi; \
+	"$$GOX_BIN" -osarch "$(GOX_TARGETS)" -output "$(BIN_DIR)/{{.Dir}}_{{.OS}}_{{.Arch}}"
 
 # --------------------------------------------------------------------------
 # tools: tools/tools.go を経由した依存解決のスモークテスト

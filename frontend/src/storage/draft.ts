@@ -15,7 +15,7 @@
 // と未保存（null）を `null` で同一視する（呼び出し側はサーバ取得値にフォール
 // バックすればよい）。
 
-import type { Schema } from '../model'
+import { normalizeSchema, type Schema } from '../model'
 
 // localStorage キー。SPA 内で唯一の下書きを表す。
 const DRAFT_KEY = 'erdm-draft'
@@ -38,7 +38,7 @@ export function loadDraft(): Schema | null {
     return null
   }
   try {
-    return JSON.parse(raw) as Schema
+    return normalizeSchema(JSON.parse(raw) as Schema)
   } catch (err) {
     console.warn('Failed to parse draft from localStorage:', err)
     return null
