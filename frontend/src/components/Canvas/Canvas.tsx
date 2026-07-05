@@ -34,12 +34,19 @@ import { putLayout } from '../../api'
 import type { Layout, Schema } from '../../model'
 import { GroupBoxNode } from './GroupBoxNode'
 import { GROUP_BOX_NODE_TYPE, computeGroupBoxes, isGroupBoxId } from './groupBoxes'
+import { TableNode } from './TableNode'
 
 const SAVE_DEBOUNCE_MS = 500
 
+// テーブルノードのカスタム種別名。
+const TABLE_NODE_TYPE = 'tableNode'
+
 // nodeTypes は再インスタンス化を避けるためモジュールスコープの安定参照にする
 // （React Flow は毎レンダー新しい nodeTypes を渡すと警告する）。
-const NODE_TYPES: NodeTypes = { [GROUP_BOX_NODE_TYPE]: GroupBoxNode }
+const NODE_TYPES: NodeTypes = {
+  [TABLE_NODE_TYPE]: TableNode,
+  [GROUP_BOX_NODE_TYPE]: GroupBoxNode,
+}
 
 export interface CanvasProps {
   schema: Schema
@@ -143,12 +150,11 @@ function buildNodes(schema: Schema, layout: Layout): Node[] {
       // Fail Fast でバグを早期に表面化させる。
       throw new Error(`Missing position for table "${t.Name}" in canvas input`)
     }
-    const label = t.LogicalName !== '' ? `${t.LogicalName} / ${t.Name}` : t.Name
     return {
       id: t.Name,
-      type: 'default',
+      type: TABLE_NODE_TYPE,
       position: { x: pos.x, y: pos.y },
-      data: { label },
+      data: { table: t },
     }
   })
 }

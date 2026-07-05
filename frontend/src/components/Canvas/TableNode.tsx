@@ -1,0 +1,119 @@
+// テーブルを「ヘッダ＋カラム行」で描く React Flow カスタムノード（#28）。
+//
+// 表示規約は DOT レンダラ（internal/dot）に合わせる:
+//   - ヘッダ: 論理名があれば `論理名 / 物理名`、無ければ物理名。
+//   - カラム行: `名前  型  (制約)`。PK は鍵アイコン、制約は NN / U / UNN、
+//     FK は FK バッジで示す。
+//   - WithoutErd カラムは ERD 非表示なので行に出さない（DOT と同方針）。
+//
+// エッジは従来どおりテーブル単位（左=target / 右=source ハンドル）。カラム行
+// 単位へのアンカーは後続対応（#28 の残作業）。
+
+import type { JSX } from 'react'
+import { Handle, Position, type NodeProps } from 'reactflow'
+import type { Column, Table } from '../../model'
+
+export interface TableNodeData {
+  table: Table
+}
+
+// columnBadges は PK 以外の制約バッジ（NN / U / UNN / FK）を DOT と同じ規則で返す。
+// PK はアイコンで別途示すためここには含めない。
+export function columnBadges(c: Column): string[] {
+  const badges: string[] = []
+  if (!c.AllowNull && c.IsUnique) {
+    badges.push('UNN')
+  } else if (!c.AllowNull) {
+    badges.push('NN')
+  } else if (c.IsUnique) {
+    badges.push('U')
+  }
+  if (c.FK !== null) {
+    badges.push('FK')
+  }
+  return badges
+}
+
+function columnLabel(c: Column): string {
+  return c.LogicalName !== '' ? `${c.LogicalName} / ${c.Name}` : c.Name
+}
+
+function tableLabel(t: Table): string {
+  return t.LogicalName !== '' ? `${t.LogicalName} / ${t.Name}` : t.Name
+}
+
+export function TableNode({ data }: NodeProps<TableNodeData>): JSX.Element {
+  const { table } = data
+  const columns = table.Columns.filter((c) => !c.WithoutErd)
+
+  return (
+    <div
+      style={{
+        border: '1px solid #555',
+        borderRadius: 6,
+        background: '#fff',
+        fontSize: 12,
+        color: '#222',
+        minWidth: 160,
+        overflow: 'hidden',
+      }}
+    >
+      <Handle type="target" position={Position.Left} style={{ background: '#555' }} />
+      <div
+        style={{
+          padding: '4px 8px',
+          fontWeight: 700,
+          background: '#f2f2f2',
+          borderBottom: '1px solid #ccc',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {tableLabel(table)}
+      </div>
+      <div>
+        {columns.map((c) => {
+          const badges = columnBadges(c)
+          return (
+            <div
+              key={c.Name}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '2px 8px',
+                borderTop: '1px solid #eee',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {c.IsPrimaryKey ? (
+                <span role="img" aria-label="primary key" style={{ width: 12, textAlign: 'center' }}>
+                  🔑
+                </span>
+              ) : (
+                <span aria-hidden="true" style={{ width: 12 }} />
+              )}
+              <span style={{ flex: 1 }}>{columnLabel(c)}</span>
+              <span style={{ color: '#888' }}>{c.Type}</span>
+              {badges.map((b) => (
+                <span
+                  key={b}
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 600,
+                    color: '#555',
+                    background: '#eee',
+                    borderRadius: 3,
+                    padding: '0 4px',
+                  }}
+                >
+                  {b}
+                </span>
+              ))}
+            </div>
+          )
+        })}
+      </div>
+      <Handle type="source" position={Position.Right} style={{ background: '#555' }} />
+    </div>
+  )
+}
